@@ -41,10 +41,36 @@ Sinks can run simultaneously — store locally for ad-hoc queries while streamin
 4. Install the appropriate client NuGet package in your application
 5. Start receiving telemetry
 
-## Requirements
+## Development
+
+### Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+
+### Run locally
+
+```bash
+dotnet run --project src/FactFoundry.TelemetryForge.Server/FactFoundry.TelemetryForge.Server.csproj
+```
+
+The server starts at `http://localhost:5090` with an in-memory database (no external dependencies needed). On first launch you'll be guided through a setup wizard to create your admin account.
+
+### Build
+
+```bash
+dotnet build
+```
+
+### Test
+
+```bash
+dotnet test
+```
+
+## Requirements (Production)
 
 - .NET 10 runtime
-- PostgreSQL, MSSQL, or MySQL
+- PostgreSQL or MSSQL (MySQL support planned)
 
 ## License
 

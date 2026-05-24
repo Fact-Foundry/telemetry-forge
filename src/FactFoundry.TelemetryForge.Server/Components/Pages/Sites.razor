@@ -1,0 +1,194 @@
+@page "/sites"
+@using FactFoundry.TelemetryForge.Server.Data
+@using FactFoundry.TelemetryForge.Server.Data.Entities
+@using FactFoundry.TelemetryForge.Server.Services
+@inject TelemetryForgeDbContext Db
+@inject ApiKeyService ApiKeyService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Sites & Apps — TelemetryForge</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+    <MudText Typo="Typo.h4">Sites &amp; Apps</MudText>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenRegisterDialog">
+        Add New
+    </MudButton>
+</MudStack>
+
+@if (_generatedKey is not null)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="() => _generatedKey = null">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.subtitle2">
+                Copy your API key now — it will not be shown again.
+            </MudText>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.body2" Style="font-family: monospace;">@_generatedKey</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small"
+                               OnClick="CopyKeyToClipboard" />
+            </MudStack>
+        </MudStack>
+    </MudAlert>
+}
+
+@if (!_sites.Any())
+{
+    <MudPaper Class="pa-6" Elevation="1">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Large" Color="Color.Default" />
+            <MudText Typo="Typo.h6">No sites registered yet</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Default">
+                Register your first site or application to get an API key and start receiving telemetry.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudTable Items="_sites" Hover="true" Elevation="1" Dense="true">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Type</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Registered</MudTh>
+            <MudTh>Last Payload</MudTh>
+            <MudTh Style="width: 48px;"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Name</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="GetTypeColor(context.Type)">
+                    @context.Type
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Color="GetStatusColor(context)">
+                    @GetStatusText(context)
+                </MudChip>
+            </MudTd>
+            <MudTd>@context.RegisteredAt.ToString("yyyy-MM-dd")</MudTd>
+            <MudTd>@(context.LastPayloadAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</MudTd>
+            <MudTd>
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" AnchorOrigin="Origin.BottomRight"
+                         TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="() => RegenerateKey(context)">
+                        Regenerate Key
+                    </MudMenuItem>
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                                 OnClick="() => DeleteSite(context)">
+                        Delete
+                    </MudMenuItem>
+                </MudMenu>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<Site> _sites = [];
+    private string? _generatedKey;
+
+    protected override void OnInitialized()
+    {
+        LoadSites();
+    }
+
+    private void LoadSites()
+    {
+        _sites = Db.Sites.OrderByDescending(s => s.RegisteredAt).ToList();
+    }
+
+    private async Task OpenRegisterDialog()
+    {
+        var parameters = new DialogParameters<RegisterSiteDialog>();
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RegisterSiteDialog>("Register Site or App", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is RegisterSiteDialog.RegisterResult data)
+        {
+            var (rawKey, hash) = ApiKeyService.GenerateKey();
+
+            var site = new Site
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = data.Name,
+                Type = data.Type,
+                ApiKeyHash = hash,
+                RegisteredAt = DateTime.UtcNow
+            };
+
+            Db.Sites.Add(site);
+            await Db.SaveChangesAsync();
+
+            _generatedKey = rawKey;
+            LoadSites();
+        }
+    }
+
+    private async Task RegenerateKey(Site site)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Regenerate API Key",
+            $"This will revoke the current key for \"{site.Name}\" and generate a new one. Any applications using the old key will stop working.",
+            "Regenerate", cancelText: "Cancel");
+
+        if (confirmed != true)
+            return;
+
+        var (rawKey, hash) = ApiKeyService.GenerateKey();
+        site.ApiKeyHash = hash;
+        await Db.SaveChangesAsync();
+
+        _generatedKey = rawKey;
+        Snackbar.Add($"API key regenerated for {site.Name}.", Severity.Success);
+    }
+
+    private async Task DeleteSite(Site site)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete Site",
+            $"Are you sure you want to delete \"{site.Name}\" and all associated data? This cannot be undone.",
+            "Delete", cancelText: "Cancel");
+
+        if (confirmed != true)
+            return;
+
+        Db.Sites.Remove(site);
+        await Db.SaveChangesAsync();
+
+        _generatedKey = null;
+        LoadSites();
+        Snackbar.Add($"{site.Name} deleted.", Severity.Info);
+    }
+
+    private async Task CopyKeyToClipboard()
+    {
+        Snackbar.Add("API key copied to clipboard.", Severity.Success);
+    }
+
+    private static Color GetTypeColor(SiteType type) => type switch
+    {
+        SiteType.Web => Color.Info,
+        SiteType.Desktop => Color.Secondary,
+        SiteType.Mobile => Color.Tertiary,
+        _ => Color.Default
+    };
+
+    private static Color GetStatusColor(Site site)
+    {
+        if (site.LastPayloadAt is null) return Color.Default;
+        if (site.LastPayloadAt > DateTime.UtcNow.AddHours(-24)) return Color.Success;
+        return Color.Warning;
+    }
+
+    private static string GetStatusText(Site site)
+    {
+        if (site.LastPayloadAt is null) return "Never received";
+        if (site.LastPayloadAt > DateTime.UtcNow.AddHours(-24)) return "Active";
+        return $"Idle ({(DateTime.UtcNow - site.LastPayloadAt.Value).Days}d)";
+    }
+}

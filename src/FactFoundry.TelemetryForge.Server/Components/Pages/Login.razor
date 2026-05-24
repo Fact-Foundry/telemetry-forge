@@ -1,0 +1,57 @@
+@page "/login"
+@layout EmptyLayout
+@using FactFoundry.TelemetryForge.Server.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Login — TelemetryForge</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraSmall" Class="mt-16">
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h5" Align="Align.Center">TelemetryForge</MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Default">
+                Sign in to the admin dashboard
+            </MudText>
+
+            @if (_showError)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">
+                    Invalid email or password, or account is locked.
+                </MudAlert>
+            }
+
+            <form method="post" action="/api/auth/login">
+                <div class="d-flex flex-column gap-3">
+                    <MudTextField T="string" @bind-Value="_email" Label="Email" InputType="InputType.Email"
+                                  Variant="Variant.Outlined" Required="true"
+                                  UserAttributes="@(new Dictionary<string, object> { ["name"] = "email" })" />
+                    <MudTextField T="string" @bind-Value="_password" Label="Password" InputType="InputType.Password"
+                                  Variant="Variant.Outlined" Required="true"
+                                  UserAttributes="@(new Dictionary<string, object> { ["name"] = "password" })" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true">
+                        Sign In
+                    </MudButton>
+                </div>
+            </form>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private bool _showError;
+
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? Error { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await AuthService.RequiresSetupAsync())
+            Navigation.NavigateTo("/setup");
+
+        _showError = Error == "invalid";
+    }
+}

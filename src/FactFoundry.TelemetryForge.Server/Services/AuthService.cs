@@ -78,6 +78,23 @@ public class AuthService
         return user;
     }
 
+    /// <summary>
+    /// Saves a server setting to the database.
+    /// </summary>
+    public async Task SaveServerSettingAsync(string key, string value)
+    {
+        var setting = await _db.ServerSettings.FindAsync(key);
+        if (setting is not null)
+        {
+            setting.Value = value;
+        }
+        else
+        {
+            _db.ServerSettings.Add(new ServerSetting { Key = key, Value = value });
+        }
+        await _db.SaveChangesAsync();
+    }
+
     private static ClaimsPrincipal CreatePrincipal(AdminUser user)
     {
         var claims = new[]

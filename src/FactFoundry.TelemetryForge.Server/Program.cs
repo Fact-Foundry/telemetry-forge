@@ -96,6 +96,7 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 // API endpoints
+app.MapAuthEndpoints();
 app.MapTelemetryEndpoints();
 app.MapSiteEndpoints();
 
