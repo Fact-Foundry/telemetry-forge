@@ -14,7 +14,7 @@ The client NuGet packages (Web, Desktop, Mobile) are in a separate repository (`
 
 - .NET 10, ASP.NET Minimal API, Blazor Server admin UI
 - MudBlazor UI framework (admin UI)
-- EF Core — in-memory provider for development/testing, PostgreSQL/MSSQL/MySQL for production
+- EF Core — in-memory provider for development/testing, PostgreSQL/MSSQL for production (MySQL deferred until Pomelo supports .NET 10)
 - Lightweight custom auth with optional OIDC (see ADR-002)
 
 ## Project Structure
