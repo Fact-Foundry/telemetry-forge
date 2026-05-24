@@ -1,0 +1,42 @@
+using System.Text.Json.Serialization;
+
+namespace FactFoundry.TelemetryForge.Server.Models.Payloads;
+
+/// <summary>
+/// Incoming telemetry payload from a desktop application (FactFoundry.TelemetryForge.Desktop).
+/// </summary>
+public class DesktopPayload
+{
+    [JsonPropertyName("app_name")]
+    public string AppName { get; set; } = string.Empty;
+
+    [JsonPropertyName("app_version")]
+    public string AppVersion { get; set; } = string.Empty;
+
+    [JsonPropertyName("platform")]
+    public string Platform { get; set; } = string.Empty;
+
+    [JsonPropertyName("os_version")]
+    public string OsVersion { get; set; } = string.Empty;
+
+    [JsonPropertyName("fingerprint_hash")]
+    public string FingerprintHash { get; set; } = string.Empty;
+
+    [JsonPropertyName("license_jwt")]
+    public string? LicenseJwt { get; set; }
+
+    [JsonPropertyName("session_start")]
+    public DateTime SessionStart { get; set; }
+
+    [JsonPropertyName("session_end")]
+    public DateTime SessionEnd { get; set; }
+
+    [JsonPropertyName("duration_ms")]
+    public int DurationMs { get; set; }
+
+    [JsonPropertyName("feature_path")]
+    public List<string> FeaturePath { get; set; } = [];
+
+    [JsonPropertyName("error_events")]
+    public List<ErrorEvent> ErrorEvents { get; set; } = [];
+}

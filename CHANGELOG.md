@@ -7,8 +7,14 @@
 - Initial project scaffold with Blazor Server + MudBlazor admin UI
 - EF Core data layer with in-memory (dev) and PostgreSQL/MSSQL/MySQL (production) support
 - Site/VisitorHash/AdminUser/ServerSetting entity models
-- Telemetry ingestion API endpoint stubs (web, desktop, mobile)
+- Telemetry ingestion pipeline — web, desktop, and mobile endpoints with API key validation, visitor hash resolution, event enrichment, and pub/sub publishing
+- Payload DTOs for web, desktop, and mobile telemetry (WebPayload, DesktopPayload, MobilePayload, ErrorEvent)
+- Enriched event models for downstream sinks (EnrichedWebEvent, EnrichedDesktopEvent, EnrichedMobileEvent)
+- API key validation endpoint filter — validates X-TelemetryForge-Key header and resolves site ID
+- Visitor hash resolution service — first-visit/first-install detection via hashed identifier lookup
+- IEventPublisher interface with LoggingEventPublisher for development
 - Site registration API endpoint stub
+- Test project with xUnit — ApiKeyService and VisitorHashService coverage
 - Cookie authentication with bcrypt password hashing and account lockout
 - API key generation using RandomNumberGenerator with bcrypt hashing
 - Rate limiting on telemetry endpoints

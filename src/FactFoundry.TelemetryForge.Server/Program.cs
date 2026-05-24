@@ -68,6 +68,8 @@ builder.Services.AddRateLimiter(options =>
 // Services
 builder.Services.AddScoped<ApiKeyService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<VisitorHashService>();
+builder.Services.AddSingleton<IEventPublisher, LoggingEventPublisher>();
 
 // Blazor + MudBlazor
 builder.Services.AddRazorComponents()
