@@ -19,11 +19,11 @@ public class WebPayload
     [JsonPropertyName("duration_ms")]
     public int DurationMs { get; set; }
 
-    [JsonPropertyName("ip_hash")]
-    public string IpHash { get; set; } = string.Empty;
+    [JsonPropertyName("ip_address")]
+    public string IpAddress { get; set; } = string.Empty;
 
-    [JsonPropertyName("ga_hash")]
-    public string? GaHash { get; set; }
+    [JsonPropertyName("ga_value")]
+    public string? GaValue { get; set; }
 
     [JsonPropertyName("user_agent")]
     public string UserAgent { get; set; } = string.Empty;

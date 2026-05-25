@@ -7,12 +7,13 @@ using MudBlazor;
 namespace FactFoundry.TelemetryForge.Server.Components.Pages;
 
 /// <summary>
-/// Dashboard page showing real-time telemetry session summaries.
+/// Dashboard page showing real-time telemetry summaries.
 /// </summary>
 public partial class Dashboard : ComponentBase
 {
     [Inject] private TelemetryForgeDbContext Db { get; set; } = default!;
 
+    private int _activeNow;
     private int _today;
     private int _thisWeek;
     private int _thisMonth;
@@ -25,12 +26,24 @@ public partial class Dashboard : ComponentBase
         var todayStart = now.Date;
         var weekStart = todayStart.AddDays(-(int)todayStart.DayOfWeek);
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var activeWindow = now.AddMinutes(-5);
 
-        var webSessions = await Db.WebSessions.AsNoTracking().ToListAsync();
+        _activeNow = await Db.WebEvents
+            .Where(e => e.Timestamp >= activeWindow && !e.IsBot)
+            .Select(e => e.SessionHash)
+            .Distinct()
+            .CountAsync();
+
+        var webEvents = await Db.WebEvents.AsNoTracking()
+            .Where(e => e.EventType == "page_view" && !e.IsBot)
+            .GroupBy(e => new { e.SessionHash, e.SiteId })
+            .Select(g => new { g.Key.SiteId, IngestedAt = g.Min(e => e.IngestedAt) })
+            .ToListAsync();
+
         var desktopSessions = await Db.DesktopSessions.AsNoTracking().ToListAsync();
         var mobileSessions = await Db.MobileSessions.AsNoTracking().ToListAsync();
 
-        var allTimes = webSessions.Select(s => s.IngestedAt)
+        var allTimes = webEvents.Select(s => s.IngestedAt)
             .Concat(desktopSessions.Select(s => s.IngestedAt))
             .Concat(mobileSessions.Select(s => s.IngestedAt))
             .ToList();
@@ -42,7 +55,7 @@ public partial class Dashboard : ComponentBase
         var sites = await Db.Sites.AsNoTracking().ToListAsync();
         _sites = sites.Select(site =>
         {
-            var siteTimes = webSessions.Where(s => s.SiteId == site.Id).Select(s => s.IngestedAt)
+            var siteTimes = webEvents.Where(s => s.SiteId == site.Id).Select(s => s.IngestedAt)
                 .Concat(desktopSessions.Where(s => s.SiteId == site.Id).Select(s => s.IngestedAt))
                 .Concat(mobileSessions.Where(s => s.SiteId == site.Id).Select(s => s.IngestedAt))
                 .ToList();
@@ -58,8 +71,14 @@ public partial class Dashboard : ComponentBase
             };
         }).ToList();
 
-        _recentSessions = webSessions.OrderByDescending(s => s.IngestedAt).Take(10)
-            .Select(s => new RecentSession { SiteName = s.SiteName, Type = SiteType.Web, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart, IsFirstSeen = s.IsFirstVisit, Country = s.Country })
+        var recentWebEvents = await Db.WebEvents.AsNoTracking()
+            .Where(e => e.EventType == "page_view" && !e.IsBot)
+            .OrderByDescending(e => e.Timestamp)
+            .Take(10)
+            .ToListAsync();
+
+        _recentSessions = recentWebEvents
+            .Select(e => new RecentSession { SiteName = e.SiteName, Type = SiteType.Web, Platform = e.Browser ?? "Unknown", DurationMs = 0, SessionStart = e.Timestamp, IsFirstSeen = e.IsFirstVisit, Country = e.Country, Page = e.Page })
             .Concat(desktopSessions.OrderByDescending(s => s.IngestedAt).Take(10)
                 .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Desktop, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart, IsFirstSeen = s.IsFirstInstall }))
             .Concat(mobileSessions.OrderByDescending(s => s.IngestedAt).Take(10)
@@ -79,6 +98,7 @@ public partial class Dashboard : ComponentBase
 
     private static string FormatDuration(int ms) => ms switch
     {
+        0 => "—",
         < 1000 => $"{ms}ms",
         < 60000 => $"{ms / 1000.0:F1}s",
         _ => $"{ms / 60000.0:F1}m"
@@ -106,5 +126,6 @@ public partial class Dashboard : ComponentBase
         public DateTime SessionStart { get; set; }
         public bool IsFirstSeen { get; set; }
         public string? Country { get; set; }
+        public string? Page { get; set; }
     }
 }

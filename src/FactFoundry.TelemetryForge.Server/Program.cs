@@ -100,14 +100,22 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("telemetry", context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Request.Headers["X-TelemetryForge-Key"].FirstOrDefault() ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+    {
+        var apiKey = context.Request.Headers["X-TelemetryForge-Key"].FirstOrDefault() ?? "unknown";
+        var clientIp = context.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown";
+        var partitionKey = $"{apiKey}:{clientIp}";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = 30,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
-            }));
+            });
+    });
 
     options.OnRejected = async (context, cancellationToken) =>
     {
@@ -133,6 +141,9 @@ builder.Services.AddScoped<IEventPublisher>(sp =>
     };
     return new CompositeEventPublisher(sinks, sp.GetRequiredService<ILogger<CompositeEventPublisher>>());
 });
+
+// Background services
+builder.Services.AddHostedService<SessionMaterializationService>();
 
 // Blazor + MudBlazor
 builder.Services.AddRazorComponents()

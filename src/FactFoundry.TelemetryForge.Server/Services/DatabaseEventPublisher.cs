@@ -1,6 +1,7 @@
 using FactFoundry.TelemetryForge.Server.Data;
 using FactFoundry.TelemetryForge.Server.Data.Entities;
 using FactFoundry.TelemetryForge.Server.Models.Events;
+using Microsoft.EntityFrameworkCore;
 
 namespace FactFoundry.TelemetryForge.Server.Services;
 
@@ -24,14 +25,14 @@ public class DatabaseEventPublisher : IEventPublisher
         switch (enrichedEvent)
         {
             case EnrichedWebEvent web:
-                _db.WebSessions.Add(MapWebSession(web));
+                _db.WebEvents.Add(MapWebEvent(web));
                 break;
             case EnrichedDesktopEvent desktop:
-                _db.DesktopSessions.Add(MapDesktopSession(desktop));
-                break;
+                await UpsertDesktopSession(desktop, cancellationToken);
+                return;
             case EnrichedMobileEvent mobile:
-                _db.MobileSessions.Add(MapMobileSession(mobile));
-                break;
+                await UpsertMobileSession(mobile, cancellationToken);
+                return;
             default:
                 _logger.LogWarning("DatabaseEventPublisher received unknown event type: {EventType}", typeof(T).Name);
                 return;
@@ -40,16 +41,78 @@ public class DatabaseEventPublisher : IEventPublisher
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private static WebSession MapWebSession(EnrichedWebEvent e) => new()
+    private async Task UpsertDesktopSession(EnrichedDesktopEvent e, CancellationToken cancellationToken)
+    {
+        var existing = !string.IsNullOrEmpty(e.SessionId)
+            ? await _db.DesktopSessions.FirstOrDefaultAsync(s => s.SessionId == e.SessionId, cancellationToken)
+            : null;
+
+        if (existing is not null)
+        {
+            existing.SessionEnd = e.SessionEnd;
+            existing.DurationMs = e.DurationMs;
+            existing.FeaturePath.AddRange(e.FeaturePath);
+            existing.FeatureCount = existing.FeaturePath.Count;
+            existing.ErrorEvents.AddRange(e.ErrorEvents.Select(err => new StoredErrorEvent
+            {
+                Feature = err.Feature,
+                Message = err.Message,
+                Timestamp = err.Timestamp
+            }));
+            existing.ErrorCount = existing.ErrorEvents.Count;
+            existing.IngestedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _db.DesktopSessions.Add(MapDesktopSession(e));
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task UpsertMobileSession(EnrichedMobileEvent e, CancellationToken cancellationToken)
+    {
+        var existing = !string.IsNullOrEmpty(e.SessionId)
+            ? await _db.MobileSessions.FirstOrDefaultAsync(s => s.SessionId == e.SessionId, cancellationToken)
+            : null;
+
+        if (existing is not null)
+        {
+            existing.SessionEnd = e.SessionEnd;
+            existing.DurationMs = e.DurationMs;
+            existing.FeaturePath.AddRange(e.FeaturePath);
+            existing.FeatureCount = existing.FeaturePath.Count;
+            existing.ErrorEvents.AddRange(e.ErrorEvents.Select(err => new StoredErrorEvent
+            {
+                Feature = err.Feature,
+                Message = err.Message,
+                Timestamp = err.Timestamp
+            }));
+            existing.ErrorCount = existing.ErrorEvents.Count;
+            existing.IngestedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            _db.MobileSessions.Add(MapMobileSession(e));
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static WebEvent MapWebEvent(EnrichedWebEvent e) => new()
     {
         SiteId = e.SiteId,
         SiteName = e.SiteName,
-        Platform = e.Platform,
-        SessionStart = e.SessionStart,
-        SessionEnd = e.SessionEnd,
-        DurationMs = e.DurationMs,
         SessionHash = e.SessionHash,
         IsFirstVisit = e.IsFirstVisit,
+        Page = e.Page,
+        StatusCode = e.StatusCode,
+        EventType = e.EventType,
+        EventName = e.EventName,
+        EventData = e.EventData is not null
+            ? System.Text.Json.JsonSerializer.Serialize(e.EventData)
+            : null,
+        TargetUrl = e.TargetUrl,
         Country = e.Country,
         Region = e.Region,
         Browser = e.Browser,
@@ -57,17 +120,15 @@ public class DatabaseEventPublisher : IEventPublisher
         DeviceType = e.DeviceType,
         Referrer = e.Referrer,
         Language = e.Language,
-        EntryPage = e.EntryPage,
-        ExitPage = e.ExitPage,
-        PageCount = e.PageCount,
-        PagePath = e.PagePath,
-        StatusCodes = e.StatusCodes,
+        IsBot = e.IsBot,
+        Timestamp = e.Timestamp,
         IngestedAt = DateTime.UtcNow
     };
 
     private static DesktopSession MapDesktopSession(EnrichedDesktopEvent e) => new()
     {
         SiteId = e.AppId,
+        SessionId = e.SessionId,
         AppName = e.AppName,
         AppVersion = e.AppVersion,
         Platform = e.Platform,
@@ -93,6 +154,7 @@ public class DatabaseEventPublisher : IEventPublisher
     private static MobileSession MapMobileSession(EnrichedMobileEvent e) => new()
     {
         SiteId = e.AppId,
+        SessionId = e.SessionId,
         AppName = e.AppName,
         AppVersion = e.AppVersion,
         Platform = e.Platform,

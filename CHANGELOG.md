@@ -43,9 +43,23 @@
 - GeoIP and OIDC settings sections added to Settings page with active/not configured status indicators
 - AddAdminDialog supports both local (password) and OIDC (email-only) account types
 - 48 tests passing — added 8 OIDC auth tests, 8 UA parser tests, 4 GeoIP client IP extraction tests
+- Per-request web telemetry (ADR-003) — web endpoint now accepts individual page events instead of end-of-session payloads
+- WebEvent entity and WebEvents table — stores raw per-request events with event type (page_view, custom, link_click, circuit_close)
+- Custom event support — developers can track arbitrary server-side events via event_type=custom with event_name and event_data
+- Session materialization background job — groups WebEvents by session hash and materializes into WebSessions after configurable inactivity window
+- Session inactivity window configurable from Settings page (default: 30 minutes)
+- Dashboard "Active Now" card — shows distinct visitors in the last 5 minutes from WebEvents
+- Rate limiter partitioned by API key + client IP (30/min per visitor) instead of per API key (100/min)
+- Desktop/Mobile heartbeat support — session_id and sequence fields enable periodic partial updates instead of single end-of-session flush
+- Desktop/Mobile upsert logic — heartbeats append feature path and error deltas to existing session rows
+- Bot detection — flags suspected bot traffic via User-Agent pattern matching and missing Accept-Language header
+- Dashboard excludes bot traffic from session counts and Active Now
+- Event Stream "Hide Bots" toggle (on by default) with bot chip indicator
+- 52 tests passing — added bot flag persistence test
 
 ### Docs
 
 - README — added "What Gets Stored" section documenting stored fields for web, desktop, and mobile sessions
 - Deployment guide — configuration, database setup, bare metal/Docker/systemd deployment, reverse proxy, GeoIP, and security notes
 - ADR-003 — proposed move from end-of-session flush to per-request web telemetry for real-time visibility and cross-platform compatibility
+- Future Enhancements — documented SDK compatibility work needed for per-request web events, heartbeat support, and custom events

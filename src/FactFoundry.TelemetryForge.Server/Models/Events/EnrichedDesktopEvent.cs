@@ -26,6 +26,12 @@ public class EnrichedDesktopEvent
     [JsonPropertyName("fingerprint_hash")]
     public string FingerprintHash { get; set; } = string.Empty;
 
+    [JsonPropertyName("session_id")]
+    public string SessionId { get; set; } = string.Empty;
+
+    [JsonPropertyName("sequence")]
+    public int Sequence { get; set; }
+
     [JsonPropertyName("is_first_install")]
     public bool IsFirstInstall { get; set; }
 

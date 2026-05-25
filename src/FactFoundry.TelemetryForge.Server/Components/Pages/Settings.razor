@@ -52,6 +52,23 @@
         </MudStack>
     </MudPaper>
 
+    @* ── Session Settings ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Session Settings</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            A web session is considered closed when no new events arrive within the inactivity window.
+            Events are then materialized into a session summary.
+        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudNumericField @bind-Value="_inactivityMinutes" Label="Inactivity window (minutes)" Variant="Variant.Outlined"
+                             Min="1" Max="1440" Immediate="true" Style="max-width:250px" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveInactivityWindow"
+                       Disabled="@(_inactivityMinutes < 1)">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
     @* ── Data Retention ── *@
     <MudPaper Class="pa-4" Elevation="1">
         <MudText Typo="Typo.h6" Class="mb-2">Data Retention</MudText>
@@ -164,6 +181,7 @@
 @code {
     private string _serverName = string.Empty;
     private string _geoIpPath = string.Empty;
+    private int _inactivityMinutes = 30;
     private int _retentionDays;
     private bool _oidcEnabled;
     private string _oidcAuthority = string.Empty;
@@ -183,6 +201,9 @@
         _oidcClientId = await AuthService.GetServerSettingAsync("Oidc:ClientId") ?? string.Empty;
         _oidcClientSecret = await AuthService.GetServerSettingAsync("Oidc:ClientSecret") ?? string.Empty;
         _oidcDisplayName = await AuthService.GetServerSettingAsync("Oidc:DisplayName") ?? string.Empty;
+
+        var inactivityValue = await AuthService.GetServerSettingAsync("Session:InactivityMinutes");
+        _inactivityMinutes = int.TryParse(inactivityValue, out var inactivity) && inactivity > 0 ? inactivity : 30;
 
         var retentionValue = await AuthService.GetServerSettingAsync("Data:RetentionDays");
         _retentionDays = int.TryParse(retentionValue, out var days) ? days : 0;
@@ -212,6 +233,12 @@
     {
         await AuthService.SaveServerSettingAsync("GeoIP:DatabasePath", _geoIpPath.Trim());
         Snackbar.Add("GeoIP database path saved. Restart the server to apply.", Severity.Success);
+    }
+
+    private async Task SaveInactivityWindow()
+    {
+        await AuthService.SaveServerSettingAsync("Session:InactivityMinutes", _inactivityMinutes.ToString());
+        Snackbar.Add($"Session inactivity window set to {_inactivityMinutes} minutes.", Severity.Success);
     }
 
     private async Task SaveRetention()

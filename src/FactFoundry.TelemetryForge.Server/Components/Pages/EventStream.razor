@@ -20,6 +20,7 @@
         <MudSelectItem T="string" Value="@("Desktop")">Desktop</MudSelectItem>
         <MudSelectItem T="string" Value="@("Mobile")">Mobile</MudSelectItem>
     </MudSelect>
+    <MudSwitch T="bool" Value="_hideBots" ValueChanged="OnHideBotsChanged" Label="Hide Bots" Color="Color.Primary" />
     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyFilters"
                StartIcon="@Icons.Material.Filled.FilterList">
         Filter
@@ -44,11 +45,11 @@ else
         <HeaderContent>
             <MudTh Style="width:40px"></MudTh>
             <MudTh>Site</MudTh>
-            <MudTh>Type</MudTh>
+            <MudTh>Source</MudTh>
+            <MudTh>Event</MudTh>
             <MudTh>Visitor</MudTh>
-            <MudTh>Platform</MudTh>
-            <MudTh Style="text-align:right">Duration</MudTh>
-            <MudTh>Ingested</MudTh>
+            <MudTh>Page / Feature</MudTh>
+            <MudTh>Time</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd>
@@ -58,17 +59,44 @@ else
             <MudTd>@context.SiteName</MudTd>
             <MudTd>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                         Color="@GetTypeColor(context.EventType)">@context.EventType</MudChip>
+                         Color="@GetTypeColor(context.SourceType)">@context.SourceType</MudChip>
             </MudTd>
             <MudTd>
-                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                         Color="@(context.IsFirstSeen ? Color.Success : Color.Default)">
-                    @(context.IsFirstSeen ? "New" : "Returning")
-                </MudChip>
+                @if (context.SourceType == "Web")
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                             Color="@GetWebEventColor(context.WebEventType)">@context.WebEventType</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                             Color="Color.Default">session</MudChip>
+                }
             </MudTd>
-            <MudTd>@context.Platform</MudTd>
-            <MudTd Style="text-align:right">@FormatDuration(context.DurationMs)</MudTd>
-            <MudTd>@context.IngestedAt.ToString("g")</MudTd>
+            <MudTd>
+                @if (context.IsBot)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Error">Bot</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                             Color="@(context.IsFirstSeen ? Color.Success : Color.Default)">
+                        @(context.IsFirstSeen ? "New" : "Returning")
+                    </MudChip>
+                }
+            </MudTd>
+            <MudTd>
+                @if (context.SourceType == "Web")
+                {
+                    @(context.EventName ?? context.Page ?? "—")
+                }
+                else
+                {
+                    @($"{context.FeatureCount} features")
+                }
+            </MudTd>
+            <MudTd>@context.Timestamp.ToString("g")</MudTd>
         </RowTemplate>
         <ChildRowContent>
             @if (context.Expanded)
@@ -77,36 +105,15 @@ else
                     <td colspan="7">
                         <MudPaper Class="pa-4 ma-2" Elevation="0" Outlined="true">
                             <MudGrid Spacing="2">
-                                <MudItem xs="12" sm="6" md="4">
-                                    <MudText Typo="Typo.caption">Session Start</MudText>
-                                    <MudText Typo="Typo.body2">@context.SessionStart.ToString("G")</MudText>
-                                </MudItem>
-                                <MudItem xs="12" sm="6" md="4">
-                                    <MudText Typo="Typo.caption">Session End</MudText>
-                                    <MudText Typo="Typo.body2">@context.SessionEnd.ToString("G")</MudText>
-                                </MudItem>
-
-                                @if (context.EventType == "Web")
+                                @if (context.SourceType == "Web")
                                 {
                                     <MudItem xs="12" sm="6" md="4">
-                                        <MudText Typo="Typo.caption">Entry Page</MudText>
-                                        <MudText Typo="Typo.body2">@(context.EntryPage ?? "—")</MudText>
+                                        <MudText Typo="Typo.caption">Page</MudText>
+                                        <MudText Typo="Typo.body2">@(context.Page ?? "—")</MudText>
                                     </MudItem>
                                     <MudItem xs="12" sm="6" md="4">
-                                        <MudText Typo="Typo.caption">Exit Page</MudText>
-                                        <MudText Typo="Typo.body2">@(context.ExitPage ?? "—")</MudText>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6" md="4">
-                                        <MudText Typo="Typo.caption">Pages Visited</MudText>
-                                        <MudText Typo="Typo.body2">@context.PageCount</MudText>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6" md="4">
-                                        <MudText Typo="Typo.caption">Language</MudText>
-                                        <MudText Typo="Typo.body2">@(context.Language ?? "—")</MudText>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6" md="4">
-                                        <MudText Typo="Typo.caption">Referrer</MudText>
-                                        <MudText Typo="Typo.body2">@(context.Referrer ?? "—")</MudText>
+                                        <MudText Typo="Typo.caption">Status Code</MudText>
+                                        <MudText Typo="Typo.body2">@(context.StatusCode > 0 ? context.StatusCode.ToString() : "—")</MudText>
                                     </MudItem>
                                     <MudItem xs="12" sm="6" md="4">
                                         <MudText Typo="Typo.caption">Country</MudText>
@@ -121,26 +128,50 @@ else
                                         <MudText Typo="Typo.body2">@(context.Os ?? "—")</MudText>
                                     </MudItem>
                                     <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Device Type</MudText>
+                                        <MudText Typo="Typo.body2">@(context.DeviceType ?? "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Language</MudText>
+                                        <MudText Typo="Typo.body2">@(context.Language ?? "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Referrer</MudText>
+                                        <MudText Typo="Typo.body2">@(context.Referrer ?? "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
                                         <MudText Typo="Typo.caption">Session Hash</MudText>
                                         <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.8rem;">@(context.SessionHash ?? "—")</MudText>
                                     </MudItem>
-                                    @if (context.PagePath.Count > 0)
+                                    @if (context.WebEventType == "link_click" && context.TargetUrl is not null)
                                     {
                                         <MudItem xs="12">
-                                            <MudText Typo="Typo.caption">Page Path</MudText>
-                                            <MudText Typo="Typo.body2">@string.Join(" → ", context.PagePath)</MudText>
+                                            <MudText Typo="Typo.caption">Target URL</MudText>
+                                            <MudText Typo="Typo.body2">@context.TargetUrl</MudText>
                                         </MudItem>
                                     }
-                                    @if (context.StatusCodes.Count > 0)
+                                    @if (context.WebEventType == "custom" && context.EventName is not null)
                                     {
                                         <MudItem xs="12">
-                                            <MudText Typo="Typo.caption">Status Codes</MudText>
-                                            <MudText Typo="Typo.body2">@string.Join(", ", context.StatusCodes.Select(kv => $"{kv.Key}: {kv.Value}"))</MudText>
+                                            <MudText Typo="Typo.caption">Custom Event</MudText>
+                                            <MudText Typo="Typo.body2">@context.EventName</MudText>
                                         </MudItem>
                                     }
                                 }
                                 else
                                 {
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Session Start</MudText>
+                                        <MudText Typo="Typo.body2">@context.Timestamp.ToString("G")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Session End</MudText>
+                                        <MudText Typo="Typo.body2">@(context.SessionEnd?.ToString("G") ?? "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Duration</MudText>
+                                        <MudText Typo="Typo.body2">@FormatDuration(context.DurationMs)</MudText>
+                                    </MudItem>
                                     <MudItem xs="12" sm="6" md="4">
                                         <MudText Typo="Typo.caption">App Version</MudText>
                                         <MudText Typo="Typo.body2">@(context.AppVersion ?? "—")</MudText>
@@ -149,7 +180,7 @@ else
                                         <MudText Typo="Typo.caption">OS Version</MudText>
                                         <MudText Typo="Typo.body2">@(context.OsVersion ?? "—")</MudText>
                                     </MudItem>
-                                    @if (context.EventType == "Desktop")
+                                    @if (context.SourceType == "Desktop")
                                     {
                                         <MudItem xs="12" sm="6" md="4">
                                             <MudText Typo="Typo.caption">License Tier</MudText>

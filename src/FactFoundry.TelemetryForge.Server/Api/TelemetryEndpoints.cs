@@ -28,13 +28,13 @@ public static class TelemetryEndpoints
 
     private static async Task<IResult> HandleWebPayload(
         HttpContext context,
-        WebPayload payload,
+        WebEventPayload payload,
         TelemetryForgeDbContext db,
         VisitorHashService visitorHashService,
         UserAgentParserService userAgentParser,
         GeoLocationService geoLocationService,
         IEventPublisher publisher,
-        ILogger<WebPayload> logger)
+        ILogger<WebEventPayload> logger)
     {
         var siteId = (string)context.Items[ApiKeyValidationFilter.SiteIdKey]!;
 
@@ -44,36 +44,37 @@ public static class TelemetryEndpoints
             if (site is null)
                 return Results.Json(new { error = "Site not found." }, statusCode: 404);
 
-            var visitorHash = payload.GaHash ?? payload.IpHash;
-            var hashType = payload.GaHash is not null ? HashType.Ga : HashType.Ip;
+            var visitorHash = payload.GaValue ?? payload.IpAddress;
+            var hashType = payload.GaValue is not null ? HashType.Ga : HashType.Ip;
             var isFirstVisit = !payload.Dnt && await visitorHashService.IsFirstSeenAsync(visitorHash, hashType, SiteType.Web, siteId);
 
             var ua = userAgentParser.Parse(payload.UserAgent);
             var clientIp = GeoLocationService.GetClientIp(context);
             var geo = geoLocationService.Lookup(clientIp);
 
+            var isBot = ua.DeviceType == "bot" || string.IsNullOrWhiteSpace(payload.Language);
+
             var enriched = new EnrichedWebEvent
             {
                 SiteId = siteId,
                 SiteName = site.Name,
-                Platform = payload.Platform,
-                SessionStart = payload.SessionStart,
-                SessionEnd = payload.SessionEnd,
-                DurationMs = payload.DurationMs,
-                SessionHash = payload.IpHash,
+                SessionHash = payload.IpAddress,
                 IsFirstVisit = isFirstVisit,
+                Page = payload.Page,
+                StatusCode = payload.StatusCode,
+                EventType = payload.EventType,
+                EventName = payload.EventName,
+                EventData = payload.EventData,
+                TargetUrl = payload.TargetUrl,
                 Country = geo.Country,
                 Region = geo.Region,
                 Browser = ua.Browser,
                 Os = ua.Os,
                 DeviceType = ua.DeviceType,
+                IsBot = isBot,
                 Referrer = payload.Referrer,
                 Language = payload.Language,
-                EntryPage = payload.EntryPage,
-                ExitPage = payload.ExitPage,
-                PagePath = payload.PagePath,
-                PageCount = payload.PagePath.Count,
-                StatusCodes = payload.StatusCodes
+                Timestamp = payload.Timestamp
             };
 
             await publisher.PublishAsync(enriched, context.RequestAborted);
@@ -89,7 +90,7 @@ public static class TelemetryEndpoints
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to process web payload for site {SiteId}", siteId);
+            logger.LogError(ex, "Failed to process web event for site {SiteId}", siteId);
             return Results.StatusCode(500);
         }
     }
@@ -121,6 +122,8 @@ public static class TelemetryEndpoints
                 Platform = payload.Platform,
                 OsVersion = payload.OsVersion,
                 FingerprintHash = payload.FingerprintHash,
+                SessionId = payload.SessionId,
+                Sequence = payload.Sequence,
                 IsFirstInstall = isFirstInstall,
                 LicenseTier = null,
                 SessionStart = payload.SessionStart,
@@ -183,6 +186,8 @@ public static class TelemetryEndpoints
                 OsVersion = payload.OsVersion,
                 DeviceHash = payload.DeviceHash,
                 DeviceHashType = payload.DeviceHashType,
+                SessionId = payload.SessionId,
+                Sequence = payload.Sequence,
                 IsFirstInstall = isFirstInstall,
                 SessionStart = payload.SessionStart,
                 SessionEnd = payload.SessionEnd,

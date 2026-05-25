@@ -1,7 +1,7 @@
 # ADR-003: Per-Request Web Telemetry and Periodic Desktop/Mobile Heartbeats
 
 **Date:** 2026-05-25
-**Status:** Proposed
+**Status:** Accepted
 
 ## Decision
 

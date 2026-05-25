@@ -5,19 +5,25 @@
 <MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
 
 <MudGrid>
-    <MudItem xs="12" sm="4">
+    <MudItem xs="12" sm="3">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Active Now</MudText>
+            <MudText Typo="Typo.h4" Color="Color.Success">@_activeNow</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="3">
         <MudPaper Class="pa-4" Elevation="1">
             <MudText Typo="Typo.subtitle2" Color="Color.Default">Sessions Today</MudText>
             <MudText Typo="Typo.h4">@_today</MudText>
         </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="4">
+    <MudItem xs="12" sm="3">
         <MudPaper Class="pa-4" Elevation="1">
             <MudText Typo="Typo.subtitle2" Color="Color.Default">Sessions This Week</MudText>
             <MudText Typo="Typo.h4">@_thisWeek</MudText>
         </MudPaper>
     </MudItem>
-    <MudItem xs="12" sm="4">
+    <MudItem xs="12" sm="3">
         <MudPaper Class="pa-4" Elevation="1">
             <MudText Typo="Typo.subtitle2" Color="Color.Default">Sessions This Month</MudText>
             <MudText Typo="Typo.h4">@_thisMonth</MudText>
@@ -62,15 +68,15 @@ else
 
 @if (_recentSessions.Count > 0)
 {
-    <MudText Typo="Typo.h6" Class="mt-6 mb-2">Recent Sessions</MudText>
+    <MudText Typo="Typo.h6" Class="mt-6 mb-2">Recent Activity</MudText>
     <MudTable Items="_recentSessions" Dense="true" Hover="true" Elevation="1">
         <HeaderContent>
             <MudTh>Site</MudTh>
             <MudTh>Type</MudTh>
             <MudTh>Visitor</MudTh>
+            <MudTh>Page / Feature</MudTh>
             <MudTh>Country</MudTh>
             <MudTh>Platform</MudTh>
-            <MudTh Style="text-align:right">Duration</MudTh>
             <MudTh>Time</MudTh>
         </HeaderContent>
         <RowTemplate>
@@ -85,9 +91,9 @@ else
                     @(context.IsFirstSeen ? "New" : "Returning")
                 </MudChip>
             </MudTd>
+            <MudTd>@(context.Page ?? "—")</MudTd>
             <MudTd>@(context.Country ?? "—")</MudTd>
             <MudTd>@context.Platform</MudTd>
-            <MudTd Style="text-align:right">@FormatDuration(context.DurationMs)</MudTd>
             <MudTd>@context.SessionStart.ToString("g")</MudTd>
         </RowTemplate>
     </MudTable>
