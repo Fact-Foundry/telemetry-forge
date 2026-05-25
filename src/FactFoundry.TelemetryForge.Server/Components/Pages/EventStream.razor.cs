@@ -60,7 +60,6 @@ public partial class EventStream : ComponentBase
                 Browser = e.Browser,
                 Os = e.Os,
                 DeviceType = e.DeviceType,
-                SessionHash = e.SessionHash
             }));
         }
 
@@ -84,7 +83,6 @@ public partial class EventStream : ComponentBase
                 SessionEnd = s.SessionEnd,
                 AppVersion = s.AppVersion,
                 OsVersion = s.OsVersion,
-                LicenseTier = s.LicenseTier,
                 FeaturePath = s.FeaturePath,
                 FeatureCount = s.FeatureCount,
                 ErrorEvents = s.ErrorEvents,
@@ -189,12 +187,10 @@ public partial class EventStream : ComponentBase
         public string? Browser { get; set; }
         public string? Os { get; set; }
         public string? DeviceType { get; set; }
-        public string? SessionHash { get; set; }
 
         // Desktop/Mobile session fields
         public string? AppVersion { get; set; }
         public string? OsVersion { get; set; }
-        public string? LicenseTier { get; set; }
         public string? FingerprintHash { get; set; }
         public string? DeviceHash { get; set; }
         public string? DeviceHashType { get; set; }

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using FactFoundry.TelemetryForge.Server.Data;
 using FactFoundry.TelemetryForge.Server.Data.Entities;
 using FactFoundry.TelemetryForge.Server.Models.Events;
@@ -44,13 +46,24 @@ public static class TelemetryEndpoints
             if (site is null)
                 return Results.Json(new { error = "Site not found." }, statusCode: 404);
 
+            var sessionHash = HashSessionIdentity(payload.SessionId, payload.IpAddress);
+            var visitorSessionHash = HashVisitorSessionIdentity(payload.SessionId, payload.IpAddress);
+
             var visitorHash = payload.GaValue ?? payload.IpAddress;
             var hashType = payload.GaValue is not null ? HashType.Ga : HashType.Ip;
-            var isFirstVisit = !payload.Dnt && await visitorHashService.IsFirstSeenAsync(visitorHash, hashType, SiteType.Web, siteId);
+            var isFirstVisit = !payload.Dnt && await visitorHashService.IsFirstSeenAsync(visitorHash, hashType, SiteType.Web, siteId, visitorSessionHash);
 
             var ua = userAgentParser.Parse(payload.UserAgent);
-            var clientIp = GeoLocationService.GetClientIp(context);
-            var geo = geoLocationService.Lookup(clientIp);
+
+            string? country = payload.Country;
+            string? region = payload.Region;
+            if (string.IsNullOrWhiteSpace(country))
+            {
+                var clientIp = GeoLocationService.GetClientIp(context);
+                var geo = geoLocationService.LookupDatabase(clientIp);
+                country = geo.Country;
+                region = geo.Region;
+            }
 
             var isBot = ua.DeviceType == "bot" || string.IsNullOrWhiteSpace(payload.Language);
 
@@ -58,7 +71,7 @@ public static class TelemetryEndpoints
             {
                 SiteId = siteId,
                 SiteName = site.Name,
-                SessionHash = payload.IpAddress,
+                SessionHash = sessionHash,
                 IsFirstVisit = isFirstVisit,
                 Page = payload.Page,
                 StatusCode = payload.StatusCode,
@@ -66,8 +79,8 @@ public static class TelemetryEndpoints
                 EventName = payload.EventName,
                 EventData = payload.EventData,
                 TargetUrl = payload.TargetUrl,
-                Country = geo.Country,
-                Region = geo.Region,
+                Country = country,
+                Region = region,
                 Browser = ua.Browser,
                 Os = ua.Os,
                 DeviceType = ua.DeviceType,
@@ -125,7 +138,6 @@ public static class TelemetryEndpoints
                 SessionId = payload.SessionId,
                 Sequence = payload.Sequence,
                 IsFirstInstall = isFirstInstall,
-                LicenseTier = null,
                 SessionStart = payload.SessionStart,
                 SessionEnd = payload.SessionEnd,
                 DurationMs = payload.DurationMs,
@@ -212,5 +224,31 @@ public static class TelemetryEndpoints
             logger.LogError(ex, "Failed to process mobile payload for site {SiteId}", siteId);
             return Results.StatusCode(500);
         }
+    }
+
+    /// <summary>
+    /// Hashes a session ID with the client IP for event grouping.
+    /// Uses a "session" salt prefix so the result cannot be correlated
+    /// with the visitor-scoped hash stored in the VisitorHash table.
+    /// </summary>
+    private static string HashSessionIdentity(string sessionId, string ipAddress)
+    {
+        var dailySalt = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var input = $"{sessionId}:{ipAddress}:session:{dailySalt}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexStringLower(hash);
+    }
+
+    /// <summary>
+    /// Hashes a session ID with the client IP for first-visit carry-forward.
+    /// No daily salt — this is an identity-scoped value that needs to match
+    /// across the entire first session. Cannot be correlated with WebEvent.SessionHash
+    /// because that hash includes a daily salt prefix.
+    /// </summary>
+    private static string HashVisitorSessionIdentity(string sessionId, string ipAddress)
+    {
+        var input = $"{sessionId}:{ipAddress}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexStringLower(hash);
     }
 }

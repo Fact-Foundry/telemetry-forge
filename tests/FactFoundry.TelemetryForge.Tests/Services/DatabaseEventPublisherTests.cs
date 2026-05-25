@@ -92,7 +92,6 @@ public class DatabaseEventPublisherTests
             SessionId = "session-uuid-1",
             Sequence = 0,
             IsFirstInstall = true,
-            LicenseTier = "commercial",
             SessionStart = DateTime.UtcNow.AddMinutes(-10),
             SessionEnd = DateTime.UtcNow,
             DurationMs = 600000,
@@ -107,7 +106,6 @@ public class DatabaseEventPublisherTests
         Assert.Equal("session-uuid-1", session.SessionId);
         Assert.Equal("Semantic Modeler", session.AppName);
         Assert.True(session.IsFirstInstall);
-        Assert.Equal("commercial", session.LicenseTier);
         Assert.Equal(2, session.FeatureCount);
         Assert.Equal(1, session.ErrorCount);
     }

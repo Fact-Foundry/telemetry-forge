@@ -139,10 +139,6 @@ else
                                         <MudText Typo="Typo.caption">Referrer</MudText>
                                         <MudText Typo="Typo.body2">@(context.Referrer ?? "—")</MudText>
                                     </MudItem>
-                                    <MudItem xs="12" sm="6" md="4">
-                                        <MudText Typo="Typo.caption">Session Hash</MudText>
-                                        <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.8rem;">@(context.SessionHash ?? "—")</MudText>
-                                    </MudItem>
                                     @if (context.WebEventType == "link_click" && context.TargetUrl is not null)
                                     {
                                         <MudItem xs="12">
@@ -182,10 +178,6 @@ else
                                     </MudItem>
                                     @if (context.SourceType == "Desktop")
                                     {
-                                        <MudItem xs="12" sm="6" md="4">
-                                            <MudText Typo="Typo.caption">License Tier</MudText>
-                                            <MudText Typo="Typo.body2">@(context.LicenseTier ?? "—")</MudText>
-                                        </MudItem>
                                         <MudItem xs="12" sm="6" md="4">
                                             <MudText Typo="Typo.caption">Fingerprint</MudText>
                                             <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.8rem;">@(context.FingerprintHash ?? "—")</MudText>

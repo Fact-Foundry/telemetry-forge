@@ -35,7 +35,7 @@ Server=db.example.com;Database=TelemetryForge;User Id=tfuser;Password=your-passw
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `GeoIP:DatabasePath` | Path to a MaxMind GeoLite2 City `.mmdb` file for IP geolocation | None (geolocation disabled) |
+| `GeoIP:DatabasePath` | Path to a MaxMind GeoLite2 City `.mmdb` file for GeoIP fallback | None (relies on SDK-provided country from CloudFlare headers) |
 
 OIDC authentication and other runtime settings are configured from the admin UI after deployment.
 
@@ -162,7 +162,7 @@ server {
 }
 ```
 
-> **Note:** The `X-Forwarded-For` header is required for IP geolocation to resolve the real client IP rather than the proxy's address.
+> **Note:** The `X-Forwarded-For` header is required for the GeoIP database fallback to resolve the real client IP rather than the proxy's address. When using CloudFlare, geolocation is handled by the SDK via CloudFlare headers and does not depend on this.
 
 ## First-Run Setup
 
@@ -173,15 +173,18 @@ After starting the server for the first time:
 3. Register your first site or app to get an API key
 4. (Optional) Configure GeoIP and OIDC under **Settings**
 
-## GeoIP Setup
+## Geolocation
 
-IP geolocation is optional. To enable it:
+Geolocation uses a two-tier approach:
 
-1. Sign up for a free [MaxMind GeoLite2](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) account
-2. Download the **GeoLite2 City** database (`.mmdb` format)
-3. Place the file on the server and set the path via `GeoIP:DatabasePath` in config, environment variable, or the admin UI Settings page
+1. **CloudFlare headers (primary)** — the SDK middleware reads `CF-IPCountry` and `CF-Region` from the visitor's request and sends them in the telemetry payload. This works automatically when your web apps are behind CloudFlare — no server-side configuration needed.
 
-A server restart is required after changing the database path. When configured, web telemetry payloads will be enriched with country and region — the raw IP address is never stored.
+2. **MaxMind GeoLite2 database (fallback)** — if the SDK does not provide a country (e.g., non-CloudFlare deployments), the server falls back to an offline GeoIP database lookup. To enable the fallback:
+   1. Sign up for a free [MaxMind GeoLite2](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) account
+   2. Download the **GeoLite2 City** database (`.mmdb` format)
+   3. Place the file on the server and set the path via `GeoIP:DatabasePath` in config, environment variable, or the admin UI Settings page
+
+A server restart is required after changing the database path. In both cases, the raw IP address is never stored — only the resolved country and region are kept.
 
 ## Security Notes
 

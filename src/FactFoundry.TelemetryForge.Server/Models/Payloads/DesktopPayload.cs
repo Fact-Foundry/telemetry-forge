@@ -22,9 +22,6 @@ public class DesktopPayload
     [JsonPropertyName("fingerprint_hash")]
     public string FingerprintHash { get; set; } = string.Empty;
 
-    [JsonPropertyName("license_jwt")]
-    public string? LicenseJwt { get; set; }
-
     /// <summary>
     /// Client-generated UUID, stable for the lifetime of the app session. Used to group heartbeats.
     /// </summary>

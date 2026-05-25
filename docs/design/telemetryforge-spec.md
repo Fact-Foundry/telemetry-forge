@@ -47,7 +47,8 @@ ASP.NET and Blazor web applications. Identity is ephemeral and inferred from req
 - Hook into the ASP.NET HTTP pipeline
 - Capture session data from `HttpContext`
 - Track Blazor Server circuit lifetime for true session boundaries (where applicable)
-- Hash IP address and read `_ga` cookie for identity resolution
+- Read IP address and `_ga` cookie for identity resolution (sent to server for hashing)
+- Read CloudFlare geolocation headers (CF-IPCountry, CF-Region) when available
 - POST session payload to `/api/telemetry/web` on the central server
 - No database dependency
 - No JavaScript emitted to the client
@@ -84,8 +85,8 @@ public class WebTelemetryOptions
 | User-Agent | Request header | Browser, OS, device type |
 | Referrer | `Referer` header | Traffic source |
 | Accept-Language | Request header | Locale/language |
-| IP (hashed) | `X-Forwarded-For` / connection | Never stored raw |
-| `_ga` value (hashed) | Request cookie | Only if present; never stored raw |
+| IP address | `X-Forwarded-For` / connection | Sent raw to server for hashing; never stored raw |
+| `_ga` value | Request cookie | Only if present; sent raw to server for hashing; never stored raw |
 | Request path | URL | Page visited |
 | Response status | Pipeline | Error tracking |
 | Response time | Middleware brackets | Performance |
@@ -101,42 +102,61 @@ Blazor Server maintains a persistent SignalR connection per user. The library ho
 
 This provides a true session boundary without reconstructing sessions from fragments after the fact. Circuit closes on tab close, navigation away, or inactivity timeout (~3 minutes by default, configurable).
 
-### Web Payload Schema
+### Web Payload Schema (Per-Request Event)
 
 ```json
 {
-  "site_id":        "string (from API key lookup)",
-  "platform":       "string (blazor-server | blazor-wasm | aspnet | other)",
-  "session_start":  "ISO 8601 datetime",
-  "session_end":    "ISO 8601 datetime",
-  "duration_ms":    "integer",
-  "ip_hash":        "string (SHA-256, daily rotating salt)",
-  "ga_hash":        "string | null (SHA-256, no salt)",
+  "ip_address":     "string (raw — hashed server-side with daily rotating salt)",
+  "ga_value":       "string | null (raw — hashed server-side)",
+  "session_id":     "string (client-generated UUID per session)",
   "user_agent":     "string",
   "referrer":       "string | null",
   "language":       "string",
-  "entry_page":     "string",
-  "exit_page":      "string",
-  "page_path":      ["string"],
-  "status_codes":   {"200": 4, "404": 1},
+  "page":           "string",
+  "status_code":    "integer",
+  "event_type":     "string (page_view | custom | link_click | circuit_close)",
+  "event_name":     "string | null (only for custom events)",
+  "event_data":     "object | null (only for custom events)",
+  "target_url":     "string | null (only for link_click events)",
+  "country":        "string | null (from CloudFlare CF-IPCountry header)",
+  "region":         "string | null (from CloudFlare CF-Region header)",
+  "timestamp":      "ISO 8601 datetime",
   "dnt":            "boolean"
 }
 ```
 
 ### Identity — Web
 
-Web identity is ephemeral and inferred. There is no persistent machine identifier available without client-side code, so identity is approximated through two layers:
+Web identity is ephemeral and inferred. There is no persistent machine identifier available without client-side code, so identity is approximated through three hashing layers designed to prevent cross-referencing:
 
-**Layer 1 — Long-term (`visitor_hashes` table on central server)**
-- SHA-256 hash of IP or `_ga` value, no salt
-- Used only to set `is_first_visit` flag
+**Layer 1 — Visitor Identity (`visitor_hashes` table)**
+- SHA-256 hash of raw IP or `_ga` value, no salt
+- Used only to determine "have we seen this visitor before?" (`is_first_visit`)
+- Also stores `FirstSessionHash` for first-visit carry-forward (see Layer 3)
 - No behavioral data — purely a lookup key
 
-**Layer 2 — Session (analytics records)**
-- IP hashed with a daily rotating salt
-- Provides within-session continuity
-- Salt discarded at midnight — permanently irreversible
-- Returning visitor detection handled by Layer 1, not the salt
+**Layer 2 — Session Hash (stored on `WebEvent` rows)**
+- SHA-256 of `session_id + IP + "session:" + daily salt`
+- Groups individual per-request events into sessions
+- Daily salt prevents cross-day tracking from reused session IDs
+- Cannot be correlated with Layer 1 (different input format + salt)
+
+**Layer 3 — Visitor Session Hash (first-visit carry-forward)**
+- SHA-256 of `session_id + IP` (no salt, no prefix)
+- Stored on the `VisitorHash` record as `FirstSessionHash` when the visitor is first seen
+- Subsequent events in the same session produce the same hash → still "New"
+- Events from a different session produce a different hash → "Returning"
+- Cannot be correlated with Layer 2 (no `session:` prefix, no daily salt)
+
+#### Cross-Reference Protection
+
+The three layers use different salt/prefix strategies so that no single hash can be used to bridge between data stores:
+
+| Hash | Input | Salt | Stored In |
+|---|---|---|---|
+| Visitor Identity | IP or `_ga` | None | `visitor_hashes.Hash` |
+| Session Hash | `session_id:IP:session:yyyy-MM-dd` | Daily | `WebEvent.SessionHash` |
+| Visitor Session Hash | `session_id:IP` | None | `visitor_hashes.FirstSessionHash` |
 
 #### Returning Visitor Tradeoff
 
@@ -188,7 +208,6 @@ public class DesktopTelemetryOptions
     public string ApiKey       { get; set; }  // Per-app API key
     public string AppName      { get; set; }  // Human-readable app identifier
     public string AppVersion   { get; set; }  // Populated automatically or manually
-    public string LicenseJwt   { get; set; }  // Optional — existing license JWT
 }
 ```
 
@@ -227,7 +246,8 @@ The raw identifier is hashed (SHA-256) before leaving the machine. The raw value
   "platform":           "string (windows | linux | macos)",
   "os_version":         "string",
   "fingerprint_hash":   "string (SHA-256 of machine identifier)",
-  "license_jwt":        "string | null (optional)",
+  "session_id":         "string (client-generated UUID per session)",
+  "sequence":           "integer (heartbeat sequence number)",
   "session_start":      "ISO 8601 datetime",
   "session_end":        "ISO 8601 datetime",
   "duration_ms":        "integer",
@@ -235,16 +255,6 @@ The raw identifier is hashed (SHA-256) before leaving the machine. The raw value
   "error_events":       [{"feature": "string", "message": "string", "timestamp": "ISO 8601"}]
 }
 ```
-
-### Optional Licensing Integration
-
-If the consuming app uses a JWT-based licensing system, passing the JWT allows the central server to correlate analytics sessions with license records:
-
-- Trial vs paid user behavior segmentation
-- Version adoption across license tiers
-- Churn signal detection (active license, declining usage)
-
-This is entirely optional — `FactFoundry.TelemetryForge.Desktop` functions fully without a licensing system.
 
 ---
 
@@ -317,7 +327,7 @@ Because mobile identifiers are less stable, `is_first_install` is best-effort ra
 - Receive payloads from all three packages via separate endpoints
 - Authenticate requests via per-site/per-app API keys
 - Perform `visitor_hashes` lookup to resolve `is_first_visit` / `is_first_install`
-- Enrich records (geolocation from IP, User-Agent parsing, etc.)
+- Enrich records (geolocation from SDK-provided CloudFlare headers or GeoIP database fallback, User-Agent parsing, bot detection)
 - Publish enriched events to configured downstream subscribers
 - Maintain the `visitor_hashes` table — the only stateful dependency in the system
 - Serve the built-in Blazor admin UI
@@ -412,20 +422,24 @@ The single stateful lookup table. Shared across all payload types.
 | `hash_type` | enum | `ip`, `ga`, `fingerprint`, `vendor-id`, `android-id`, `generated-guid` |
 | `source_type` | enum | `web`, `desktop`, `mobile` |
 | `first_seen` | datetime | |
+| `first_session_hash` | string | null | SHA-256 of `session_id + IP` (web only) — for first-visit carry-forward |
 | `site_id` | string | |
 
-No behavioral data — purely an existence check for `is_first_visit` / `is_first_install`.
+No behavioral data — purely an existence check for `is_first_visit` / `is_first_install`. The `first_session_hash` enables all events in the initial session to be marked "New" without storing behavioral data.
 
 ### IP Processing Pipeline (Web Only)
 
 ```
-Receive raw IP
+Receive raw IP + session_id + country/region from payload
       ↓
-Geolocate → store country/region only
+If country empty → GeoIP database fallback on raw IP
       ↓
-Hash with daily rotating salt → session_hash (stored)
+Hash session_id + IP + "session:" + daily salt → SessionHash (stored on WebEvent)
       ↓
-Hash without salt → lookup in visitor_hashes → set is_first_visit
+Hash session_id + IP (no salt) → VisitorSessionHash
+      ↓
+Hash IP or _ga (no salt) → lookup in visitor_hashes → set is_first_visit
+   (compare VisitorSessionHash for first-visit carry-forward)
       ↓
 Discard raw IP — never persisted
 ```
@@ -436,24 +450,23 @@ Discard raw IP — never persisted
 {
   "site_id":        "string",
   "site_name":      "string",
-  "platform":       "string",
-  "session_start":  "ISO 8601",
-  "session_end":    "ISO 8601",
-  "duration_ms":    "integer",
-  "session_hash":   "string (daily-salted)",
+  "session_hash":   "string (daily-salted, for event grouping)",
   "is_first_visit": "boolean",
-  "country":        "string",
-  "region":         "string",
+  "is_bot":         "boolean",
+  "page":           "string",
+  "status_code":    "integer",
+  "event_type":     "string (page_view | custom | link_click | circuit_close)",
+  "event_name":     "string | null",
+  "event_data":     "object | null",
+  "target_url":     "string | null",
+  "country":        "string (from SDK CloudFlare headers or GeoIP database fallback)",
+  "region":         "string | null",
   "browser":        "string (parsed from User-Agent)",
   "os":             "string (parsed from User-Agent)",
   "device_type":    "string (desktop | mobile | tablet | bot)",
   "referrer":       "string | null",
   "language":       "string",
-  "entry_page":     "string",
-  "exit_page":      "string",
-  "page_path":      ["string"],
-  "page_count":     "integer",
-  "status_codes":   {"200": 4, "404": 1}
+  "timestamp":      "ISO 8601"
 }
 ```
 
@@ -467,8 +480,9 @@ Discard raw IP — never persisted
   "platform":           "string",
   "os_version":         "string",
   "fingerprint_hash":   "string",
+  "session_id":         "string (client-generated UUID)",
+  "sequence":           "integer",
   "is_first_install":   "boolean",
-  "license_tier":       "string | null (trial | personal | commercial)",
   "session_start":      "ISO 8601",
   "session_end":        "ISO 8601",
   "duration_ms":        "integer",

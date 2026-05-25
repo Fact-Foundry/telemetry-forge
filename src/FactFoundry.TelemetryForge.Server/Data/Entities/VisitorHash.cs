@@ -27,6 +27,12 @@ public class VisitorHash
     public DateTime FirstSeen { get; set; }
 
     /// <summary>
+    /// The session hash from the visitor's first session. Used to carry forward
+    /// "New" status for all events in the same session that created this record.
+    /// </summary>
+    public string? FirstSessionHash { get; set; }
+
+    /// <summary>
     /// The site this visitor hash is associated with.
     /// </summary>
     public string SiteId { get; set; } = string.Empty;

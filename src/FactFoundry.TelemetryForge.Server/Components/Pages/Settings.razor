@@ -27,19 +27,20 @@
     @* ── GeoIP ── *@
     <MudPaper Class="pa-4" Elevation="1">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-            <MudText Typo="Typo.h6">GeoIP Database</MudText>
-            @if (GeoLocationService.IsAvailable)
+            <MudText Typo="Typo.h6">GeoIP</MudText>
+            @if (GeoLocationService.IsDatabaseAvailable)
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Success">Database Active</MudChip>
             }
             else
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Not Configured</MudChip>
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">CloudFlare Only</MudChip>
             }
         </MudStack>
         <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
-            Path to a MaxMind GeoLite2 City database file (.mmdb). Download the free database from
-            MaxMind. A server restart is required after changing this setting.
+            Geolocation is resolved from CloudFlare headers (CF-IPCountry) automatically when behind CloudFlare.
+            Optionally configure a MaxMind GeoLite2 database as a fallback for region-level detail or non-CloudFlare deployments.
+            A server restart is required after changing the database path.
         </MudText>
         <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
             <MudTextField @bind-Value="_geoIpPath" Label="Database File Path" Variant="Variant.Outlined"

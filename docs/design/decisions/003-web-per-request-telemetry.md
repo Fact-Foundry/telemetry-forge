@@ -43,8 +43,9 @@ End-of-session flush is only viable for Blazor Server circuits and desktop/mobil
 
 ```json
 {
-  "ip_hash":        "string (SHA-256, daily rotating salt)",
-  "ga_hash":        "string | null",
+  "ip_address":     "string (raw — hashed server-side)",
+  "ga_value":       "string | null (raw — hashed server-side)",
+  "session_id":     "string (client-generated UUID per session)",
   "user_agent":     "string",
   "referrer":       "string | null",
   "language":       "string",
@@ -54,6 +55,8 @@ End-of-session flush is only viable for Blazor Server circuits and desktop/mobil
   "event_name":     "string | null (only for custom events)",
   "event_data":     "object | null (only for custom events)",
   "target_url":     "string | null (only for link_click events)",
+  "country":        "string | null (from CloudFlare CF-IPCountry)",
+  "region":         "string | null (from CloudFlare CF-Region)",
   "timestamp":      "ISO 8601 datetime",
   "dnt":            "boolean"
 }
@@ -69,8 +72,9 @@ Any platform can send a `custom` event to track application-specific interaction
 
 ```json
 {
-  "ip_hash":        "string",
-  "ga_hash":        "string | null",
+  "ip_address":     "string",
+  "ga_value":       "string | null",
+  "session_id":     "string",
   "page":           "string (page where the event occurred)",
   "event_type":     "custom",
   "event_name":     "string (developer-defined, e.g. 'contact_form_submit', 'download_brochure')",
@@ -104,7 +108,7 @@ Custom events flow through the same `WebEvents` table and event pipeline as page
 
 ### Server-side session assembly
 
-The server groups events into sessions using the daily-salted `session_hash` (derived from IP) and a configurable inactivity window (default: 30 minutes). Session-level fields are computed:
+The server groups events into sessions using the daily-salted `SessionHash` (derived from `session_id + IP + "session:" + daily salt`) and a configurable inactivity window (default: 30 minutes). Session-level fields are computed:
 
 | Field | Computation |
 |---|---|
@@ -157,8 +161,9 @@ Each click produces a web event with a distinct event type:
 
 ```json
 {
-  "ip_hash":        "string",
-  "ga_hash":        "string | null",
+  "ip_address":     "string",
+  "ga_value":       "string | null",
+  "session_id":     "string",
   "page":           "string (current page where click occurred)",
   "target_url":     "string (href of the clicked link)",
   "event_type":     "link_click",
@@ -206,7 +211,6 @@ The client sends a partial session update at a configurable interval (default: 1
   "platform":         "string",
   "os_version":       "string",
   "fingerprint_hash": "string",
-  "license_jwt":      "string | null",
   "session_id":       "string (client-generated UUID, stable for the session)",
   "sequence":         0,
   "session_start":    "ISO 8601 datetime",

@@ -74,6 +74,27 @@ public class WebEventPayload
     public string? TargetUrl { get; set; }
 
     /// <summary>
+    /// Visitor's country, resolved by the SDK from CloudFlare CF-IPCountry header or similar.
+    /// If empty, the server will attempt a GeoIP database lookup as a fallback.
+    /// </summary>
+    [JsonPropertyName("country")]
+    public string? Country { get; set; }
+
+    /// <summary>
+    /// Visitor's region/state, resolved by the SDK from CloudFlare CF-Region header or similar.
+    /// Only available on CloudFlare paid plans. Falls back to GeoIP database if empty.
+    /// </summary>
+    [JsonPropertyName("region")]
+    public string? Region { get; set; }
+
+    /// <summary>
+    /// Client-generated session identifier. Hashed with IP and a daily salt server-side
+    /// to produce the session hash — prevents cross-day tracking via reused session IDs.
+    /// </summary>
+    [JsonPropertyName("session_id")]
+    public string SessionId { get; set; } = string.Empty;
+
+    /// <summary>
     /// When this event occurred.
     /// </summary>
     [JsonPropertyName("timestamp")]

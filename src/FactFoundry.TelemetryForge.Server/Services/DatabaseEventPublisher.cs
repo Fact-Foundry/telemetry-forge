@@ -135,7 +135,6 @@ public class DatabaseEventPublisher : IEventPublisher
         OsVersion = e.OsVersion,
         FingerprintHash = e.FingerprintHash,
         IsFirstInstall = e.IsFirstInstall,
-        LicenseTier = e.LicenseTier,
         SessionStart = e.SessionStart,
         SessionEnd = e.SessionEnd,
         DurationMs = e.DurationMs,

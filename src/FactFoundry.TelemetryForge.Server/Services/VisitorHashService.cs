@@ -19,26 +19,33 @@ public class VisitorHashService
 
     /// <summary>
     /// Checks whether the given visitor hash has been seen before for a site.
-    /// If new, inserts the hash and returns true. If already known, returns false.
+    /// If new, inserts the hash and returns true. If already known but the session hash
+    /// matches the first session, returns true (still on first visit). Otherwise returns false.
     /// </summary>
-    public async Task<bool> IsFirstSeenAsync(string hash, HashType hashType, SiteType sourceType, string siteId)
+    public async Task<bool> IsFirstSeenAsync(string hash, HashType hashType, SiteType sourceType, string siteId, string? sessionHash = null)
     {
-        var exists = await _db.VisitorHashes
-            .AnyAsync(v => v.Hash == hash && v.SiteId == siteId);
+        var existing = await _db.VisitorHashes
+            .FirstOrDefaultAsync(v => v.Hash == hash && v.SiteId == siteId);
 
-        if (exists)
-            return false;
-
-        _db.VisitorHashes.Add(new VisitorHash
+        if (existing is null)
         {
-            Hash = hash,
-            HashType = hashType,
-            SourceType = sourceType,
-            FirstSeen = DateTime.UtcNow,
-            SiteId = siteId
-        });
+            _db.VisitorHashes.Add(new VisitorHash
+            {
+                Hash = hash,
+                HashType = hashType,
+                SourceType = sourceType,
+                FirstSeen = DateTime.UtcNow,
+                FirstSessionHash = sessionHash,
+                SiteId = siteId
+            });
 
-        await _db.SaveChangesAsync();
-        return true;
+            await _db.SaveChangesAsync();
+            return true;
+        }
+
+        if (sessionHash is not null && existing.FirstSessionHash == sessionHash)
+            return true;
+
+        return false;
     }
 }

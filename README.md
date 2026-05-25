@@ -35,7 +35,7 @@ Sinks can run simultaneously — store locally for ad-hoc queries while streamin
 
 ## What Gets Stored
 
-TelemetryForge stores session-level summaries, not individual page views or click streams. Raw IP addresses are never persisted — geolocation (if configured) runs at ingestion time and only the resolved country and region are kept. Visitor identifiers are one-way hashed before storage.
+TelemetryForge stores session-level summaries, not individual page views or click streams. Raw IP addresses are never persisted — geolocation is resolved from CloudFlare headers (sent by the SDK) or an optional GeoIP database fallback, and only the resolved country and region are kept. Visitor identifiers are one-way hashed before storage. Suspected bot traffic is flagged automatically via User-Agent pattern matching and missing Accept-Language headers.
 
 ### Web Sessions
 
@@ -45,7 +45,7 @@ TelemetryForge stores session-level summaries, not individual page views or clic
 | **Timing** | Session start, session end, duration |
 | **Pages** | Entry page, exit page, page count, ordered page path |
 | **Browser** | Browser name, OS, device type (parsed from User-Agent), language, referrer |
-| **Location** | Country, region (requires optional GeoIP database) |
+| **Location** | Country, region (from CloudFlare headers or optional GeoIP database) |
 | **Errors** | HTTP status codes encountered during the session |
 
 ### Desktop Sessions
@@ -57,7 +57,6 @@ TelemetryForge stores session-level summaries, not individual page views or clic
 | **Timing** | Session start, session end, duration |
 | **Usage** | Feature count, ordered feature path |
 | **Errors** | Error count, error events (message, stack trace, timestamp) |
-| **Licensing** | License tier (if a JWT is present) |
 
 ### Mobile Sessions
 

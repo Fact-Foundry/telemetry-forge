@@ -41,11 +41,6 @@ public class WebSession
     public int DurationMs { get; set; }
 
     /// <summary>
-    /// Daily-salted hash for session deduplication.
-    /// </summary>
-    public string SessionHash { get; set; } = string.Empty;
-
-    /// <summary>
     /// Whether this was the visitor's first session on this site.
     /// </summary>
     public bool IsFirstVisit { get; set; }

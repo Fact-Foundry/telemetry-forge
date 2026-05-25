@@ -99,7 +99,6 @@ public class SessionMaterializationService : BackgroundService
                 SessionStart = events[0].Timestamp,
                 SessionEnd = events[^1].Timestamp,
                 DurationMs = (int)(events[^1].Timestamp - events[0].Timestamp).TotalMilliseconds,
-                SessionHash = candidate.SessionHash,
                 IsFirstVisit = events.Any(e => e.IsFirstVisit),
                 Country = firstEvent.Country,
                 Region = firstEvent.Region,

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.0]
 
 ### Features
 
@@ -55,6 +55,14 @@
 - Bot detection — flags suspected bot traffic via User-Agent pattern matching and missing Accept-Language header
 - Dashboard excludes bot traffic from session counts and Active Now
 - Event Stream "Hide Bots" toggle (on by default) with bot chip indicator
+- Removed LicenseJwt/LicenseTier from desktop telemetry pipeline — payload, enrichment, storage, and UI
+- Session identity via hashed session_id + IP + daily salt — prevents cross-day tracking from reused session IDs
+- First-visit carry-forward via FirstSessionHash on VisitorHash — all events in the initial session show "New"
+- Cross-reference protection — session hash uses different salt strategy than visitor hash, preventing table joins
+- Two-tier geolocation — SDK reads CloudFlare headers (CF-IPCountry, CF-Region) as primary source, server falls back to MaxMind GeoIP database
+- Added country and region fields to web payload for SDK-provided geolocation
+- Removed SessionHash from materialized WebSession entity (privacy — no trackable data in session records)
+- Renamed payload fields: ip_hash → ip_address, ga_hash → ga_value (server does the hashing, not the SDK)
 - 52 tests passing — added bot flag persistence test
 
 ### Docs
@@ -62,4 +70,7 @@
 - README — added "What Gets Stored" section documenting stored fields for web, desktop, and mobile sessions
 - Deployment guide — configuration, database setup, bare metal/Docker/systemd deployment, reverse proxy, GeoIP, and security notes
 - ADR-003 — proposed move from end-of-session flush to per-request web telemetry for real-time visibility and cross-platform compatibility
+- Security & Privacy doc — hashing strategy, data flow, stored vs. discarded fields, cross-reference protection
+- Deployment guide updated with two-tier geolocation approach (CloudFlare primary, GeoIP fallback)
+- Architecture spec updated — three-hash identity model, per-request payload schema, removed license references
 - Future Enhancements — documented SDK compatibility work needed for per-request web events, heartbeat support, and custom events

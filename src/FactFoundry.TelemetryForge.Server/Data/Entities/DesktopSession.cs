@@ -51,11 +51,6 @@ public class DesktopSession
     public bool IsFirstInstall { get; set; }
 
     /// <summary>
-    /// License tier extracted from the JWT (null if no license).
-    /// </summary>
-    public string? LicenseTier { get; set; }
-
-    /// <summary>
     /// When the session started.
     /// </summary>
     public DateTime SessionStart { get; set; }
