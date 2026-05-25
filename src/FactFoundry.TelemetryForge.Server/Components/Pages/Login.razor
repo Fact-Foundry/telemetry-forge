@@ -24,10 +24,10 @@
             <form method="post" action="/api/auth/login">
                 <div class="d-flex flex-column gap-3">
                     <MudTextField T="string" @bind-Value="_email" Label="Email" InputType="InputType.Email"
-                                  Variant="Variant.Outlined" Required="true"
+                                  Variant="Variant.Outlined" Required="true" Immediate="true"
                                   UserAttributes="@(new Dictionary<string, object> { ["name"] = "email" })" />
                     <MudTextField T="string" @bind-Value="_password" Label="Password" InputType="InputType.Password"
-                                  Variant="Variant.Outlined" Required="true"
+                                  Variant="Variant.Outlined" Required="true" Immediate="true"
                                   UserAttributes="@(new Dictionary<string, object> { ["name"] = "password" })" />
                     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
                                FullWidth="true">

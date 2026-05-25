@@ -59,11 +59,11 @@ public partial class Dashboard : ComponentBase
         }).ToList();
 
         _recentSessions = webSessions.OrderByDescending(s => s.IngestedAt).Take(10)
-            .Select(s => new RecentSession { SiteName = s.SiteName, Type = SiteType.Web, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart })
+            .Select(s => new RecentSession { SiteName = s.SiteName, Type = SiteType.Web, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart, IsFirstSeen = s.IsFirstVisit, Country = s.Country })
             .Concat(desktopSessions.OrderByDescending(s => s.IngestedAt).Take(10)
-                .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Desktop, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart }))
+                .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Desktop, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart, IsFirstSeen = s.IsFirstInstall }))
             .Concat(mobileSessions.OrderByDescending(s => s.IngestedAt).Take(10)
-                .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Mobile, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart }))
+                .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Mobile, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart, IsFirstSeen = s.IsFirstInstall }))
             .OrderByDescending(s => s.SessionStart)
             .Take(10)
             .ToList();
@@ -104,5 +104,7 @@ public partial class Dashboard : ComponentBase
         public string Platform { get; set; } = string.Empty;
         public int DurationMs { get; set; }
         public DateTime SessionStart { get; set; }
+        public bool IsFirstSeen { get; set; }
+        public string? Country { get; set; }
     }
 }

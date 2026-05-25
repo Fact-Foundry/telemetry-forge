@@ -1,0 +1,70 @@
+@using FactFoundry.TelemetryForge.Server.Data.Entities
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
+                          Variant="Variant.Outlined" Required="true" Immediate="true" />
+            <MudTextField @bind-Value="_displayName" Label="Display Name"
+                          Variant="Variant.Outlined" Required="true" Immediate="true" />
+            <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
+                          Variant="Variant.Outlined" Required="true" Immediate="true"
+                          HelperText="Minimum 12 characters" />
+            <MudTextField @bind-Value="_confirmPassword" Label="Confirm Password"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined" Required="true" Immediate="true" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(!IsValid)">
+            Add Admin
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _email = string.Empty;
+    private string _displayName = string.Empty;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private string? _error;
+
+    private bool IsValid =>
+        !string.IsNullOrWhiteSpace(_email) &&
+        !string.IsNullOrWhiteSpace(_displayName) &&
+        !string.IsNullOrWhiteSpace(_password) &&
+        _password.Length >= 12 &&
+        _password == _confirmPassword;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        _error = null;
+
+        if (_password.Length < 12)
+        {
+            _error = "Password must be at least 12 characters.";
+            return;
+        }
+
+        if (_password != _confirmPassword)
+        {
+            _error = "Passwords do not match.";
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new AdminResult(_email, _displayName, _password)));
+    }
+
+    public record AdminResult(string Email, string DisplayName, string Password);
+}

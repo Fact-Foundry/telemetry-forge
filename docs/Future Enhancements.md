@@ -12,4 +12,4 @@ Items listed here are planned but deferred from the initial implementation. Remo
 
 ## Admin UI
 
-- **Event Stream page** — Live/paginated feed of recent enriched events with filtering and expandable payload detail rows.
+- **User-Agent parsing** — Parse browser, OS, and device type from the User-Agent header during web session ingestion.

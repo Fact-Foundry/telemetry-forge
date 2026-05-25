@@ -4,7 +4,8 @@
     <DialogContent>
         <MudStack Spacing="3">
             <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined"
-                          Placeholder="e.g. My Website, Desktop App" Required="true" />
+                          Placeholder="e.g. My Website, Desktop App" Required="true"
+                          Immediate="true" />
             <MudSelect @bind-Value="_type" Label="Type" Variant="Variant.Outlined" Required="true">
                 <MudSelectItem Value="SiteType.Web">Web</MudSelectItem>
                 <MudSelectItem Value="SiteType.Desktop">Desktop</MudSelectItem>

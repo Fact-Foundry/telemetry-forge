@@ -60,6 +60,8 @@ public class DatabaseEventPublisher : IEventPublisher
         EntryPage = e.EntryPage,
         ExitPage = e.ExitPage,
         PageCount = e.PageCount,
+        PagePath = e.PagePath,
+        StatusCodes = e.StatusCodes,
         IngestedAt = DateTime.UtcNow
     };
 
@@ -78,6 +80,13 @@ public class DatabaseEventPublisher : IEventPublisher
         DurationMs = e.DurationMs,
         FeatureCount = e.FeaturePath.Count,
         ErrorCount = e.ErrorEvents.Count,
+        FeaturePath = e.FeaturePath,
+        ErrorEvents = e.ErrorEvents.Select(err => new StoredErrorEvent
+        {
+            Feature = err.Feature,
+            Message = err.Message,
+            Timestamp = err.Timestamp
+        }).ToList(),
         IngestedAt = DateTime.UtcNow
     };
 
@@ -96,6 +105,13 @@ public class DatabaseEventPublisher : IEventPublisher
         DurationMs = e.DurationMs,
         FeatureCount = e.FeaturePath.Count,
         ErrorCount = e.ErrorEvents.Count,
+        FeaturePath = e.FeaturePath,
+        ErrorEvents = e.ErrorEvents.Select(err => new StoredErrorEvent
+        {
+            Feature = err.Feature,
+            Message = err.Message,
+            Timestamp = err.Timestamp
+        }).ToList(),
         IngestedAt = DateTime.UtcNow
     };
 }

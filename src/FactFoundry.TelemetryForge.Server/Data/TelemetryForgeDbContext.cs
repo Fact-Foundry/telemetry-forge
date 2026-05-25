@@ -1,5 +1,8 @@
+using System.Text.Json;
 using FactFoundry.TelemetryForge.Server.Data.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FactFoundry.TelemetryForge.Server.Data;
 
@@ -27,6 +30,11 @@ public class TelemetryForgeDbContext : DbContext
     /// Server configuration settings managed from the admin UI.
     /// </summary>
     public DbSet<ServerSetting> ServerSettings => Set<ServerSetting>();
+
+    /// <summary>
+    /// Configured downstream event sinks.
+    /// </summary>
+    public DbSet<Sink> Sinks => Set<Sink>();
 
     /// <summary>
     /// Stored web telemetry sessions.
@@ -79,12 +87,20 @@ public class TelemetryForgeDbContext : DbContext
             entity.Property(e => e.Value).IsRequired();
         });
 
+        modelBuilder.Entity<Sink>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+        });
+
         modelBuilder.Entity<WebSession>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.SiteId).IsRequired();
             entity.HasIndex(e => e.SiteId);
             entity.HasIndex(e => e.SessionStart);
+            entity.Property(e => e.PagePath).HasJsonConversion();
+            entity.Property(e => e.StatusCodes).HasJsonConversion();
         });
 
         modelBuilder.Entity<DesktopSession>(entity =>
@@ -93,6 +109,8 @@ public class TelemetryForgeDbContext : DbContext
             entity.Property(e => e.SiteId).IsRequired();
             entity.HasIndex(e => e.SiteId);
             entity.HasIndex(e => e.SessionStart);
+            entity.Property(e => e.FeaturePath).HasJsonConversion();
+            entity.Property(e => e.ErrorEvents).HasJsonConversion();
         });
 
         modelBuilder.Entity<MobileSession>(entity =>
@@ -101,6 +119,34 @@ public class TelemetryForgeDbContext : DbContext
             entity.Property(e => e.SiteId).IsRequired();
             entity.HasIndex(e => e.SiteId);
             entity.HasIndex(e => e.SessionStart);
+            entity.Property(e => e.FeaturePath).HasJsonConversion();
+            entity.Property(e => e.ErrorEvents).HasJsonConversion();
         });
+    }
+}
+
+/// <summary>
+/// Extension methods for configuring JSON value conversion on EF Core properties.
+/// </summary>
+internal static class ValueConversionExtensions
+{
+    /// <summary>
+    /// Configures a property to be stored as a JSON string in the database.
+    /// </summary>
+    public static Microsoft.EntityFrameworkCore.Metadata.Builders.PropertyBuilder<T> HasJsonConversion<T>(
+        this Microsoft.EntityFrameworkCore.Metadata.Builders.PropertyBuilder<T> builder) where T : class
+    {
+        var converter = new ValueConverter<T, string>(
+            v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default),
+            v => JsonSerializer.Deserialize<T>(v, JsonSerializerOptions.Default)!);
+
+        var comparer = new ValueComparer<T>(
+            (a, b) => JsonSerializer.Serialize(a, JsonSerializerOptions.Default) == JsonSerializer.Serialize(b, JsonSerializerOptions.Default),
+            v => JsonSerializer.Serialize(v, JsonSerializerOptions.Default).GetHashCode(),
+            v => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(v, JsonSerializerOptions.Default), JsonSerializerOptions.Default)!);
+
+        builder.HasConversion(converter);
+        builder.Metadata.SetValueComparer(comparer);
+        return builder;
     }
 }

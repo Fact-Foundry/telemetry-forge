@@ -101,6 +101,16 @@ public class WebSession
     public int PageCount { get; set; }
 
     /// <summary>
+    /// Ordered list of pages visited during the session.
+    /// </summary>
+    public List<string> PagePath { get; set; } = [];
+
+    /// <summary>
+    /// HTTP status codes encountered during the session, keyed by status code.
+    /// </summary>
+    public Dictionary<string, int> StatusCodes { get; set; } = [];
+
+    /// <summary>
     /// When this record was ingested by the server.
     /// </summary>
     public DateTime IngestedAt { get; set; }

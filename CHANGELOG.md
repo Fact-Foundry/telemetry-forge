@@ -15,7 +15,9 @@
 - IEventPublisher interface with LoggingEventPublisher for development
 - DatabaseEventPublisher — persists enriched events to WebSessions, DesktopSessions, MobileSessions tables
 - CompositeEventPublisher — fans out events to multiple sinks (database + logging)
-- Dashboard wired to real data — session counts (today/week/month), per-site breakdown, recent sessions table
+- Dashboard wired to real data — session counts (today/week/month), per-site breakdown, recent sessions with visitor/country columns
+- Event Stream page — filterable feed of enriched events with expandable detail rows showing full session payload
+- Session detail data stored in DB — feature paths, error events, page paths, and status codes persisted as JSON columns
 - Site registration API endpoint stub
 - Test project with xUnit — ApiKeyService, VisitorHashService, and DatabaseEventPublisher coverage
 - Cookie authentication with bcrypt password hashing and account lockout
@@ -29,3 +31,7 @@
 - Dashboard page with session summary cards
 - Navigation layout with dark mode on by default, light mode toggle
 - Empty layout for setup and login pages (no sidebar)
+- Sinks page — add, toggle, and delete HTTP event sinks with site scoping
+- Settings page — server name, data retention, admin account management (add, delete, reset password)
+- AuthService admin management — create/delete admins, reset passwords, server settings read/write
+- AuthService test coverage — 11 tests covering create, delete, reset password, lockout, and settings CRUD

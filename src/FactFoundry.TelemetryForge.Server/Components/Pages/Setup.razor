@@ -23,15 +23,15 @@
             {
                 <MudText Typo="Typo.h6">Step 1 — Admin Account</MudText>
                 <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
-                              Variant="Variant.Outlined" />
+                              Variant="Variant.Outlined" Immediate="true" />
                 <MudTextField @bind-Value="_displayName" Label="Display Name"
-                              Variant="Variant.Outlined" />
+                              Variant="Variant.Outlined" Immediate="true" />
                 <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Outlined" Immediate="true"
                               HelperText="Minimum 12 characters" />
                 <MudTextField @bind-Value="_confirmPassword" Label="Confirm Password"
                               InputType="InputType.Password"
-                              Variant="Variant.Outlined" />
+                              Variant="Variant.Outlined" Immediate="true" />
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextStep">
                     Continue
                 </MudButton>
@@ -43,7 +43,7 @@
                     Give this TelemetryForge instance a name. This is shown in the admin UI header.
                 </MudText>
                 <MudTextField @bind-Value="_serverName" Label="Server Name"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Outlined" Immediate="true"
                               Placeholder="e.g. Production, Staging, My Dev Server" />
                 <MudStack Row="true" Spacing="2">
                     <MudButton Variant="Variant.Outlined" OnClick="() => _step = 0">Back</MudButton>

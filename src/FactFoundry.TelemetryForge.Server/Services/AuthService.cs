@@ -79,6 +79,71 @@ public class AuthService
     }
 
     /// <summary>
+    /// Creates an additional admin account.
+    /// </summary>
+    public async Task<AdminUser> CreateAdminAsync(string email, string displayName, string password)
+    {
+        var user = new AdminUser
+        {
+            Email = email,
+            DisplayName = displayName,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.AdminUsers.Add(user);
+        await _db.SaveChangesAsync();
+        return user;
+    }
+
+    /// <summary>
+    /// Deletes an admin account by ID. Returns false if the user was not found.
+    /// </summary>
+    public async Task<bool> DeleteAdminAsync(string userId)
+    {
+        var user = await _db.AdminUsers.FindAsync(userId);
+        if (user is null)
+            return false;
+
+        _db.AdminUsers.Remove(user);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Resets an admin user's password.
+    /// </summary>
+    public async Task<bool> ResetPasswordAsync(string userId, string newPassword)
+    {
+        var user = await _db.AdminUsers.FindAsync(userId);
+        if (user is null)
+            return false;
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.FailedLoginAttempts = 0;
+        user.LockedUntil = null;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Returns all admin user accounts.
+    /// </summary>
+    public async Task<List<AdminUser>> GetAdminUsersAsync()
+    {
+        return await _db.AdminUsers.OrderBy(u => u.Email).ToListAsync();
+    }
+
+    /// <summary>
+    /// Retrieves a server setting value by key, or null if not found.
+    /// </summary>
+    public async Task<string?> GetServerSettingAsync(string key)
+    {
+        var setting = await _db.ServerSettings.FindAsync(key);
+        return setting?.Value;
+    }
+
+    /// <summary>
     /// Saves a server setting to the database.
     /// </summary>
     public async Task SaveServerSettingAsync(string key, string value)

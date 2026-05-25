@@ -105,7 +105,7 @@ public static class TelemetryEndpoints
             var enriched = new EnrichedDesktopEvent
             {
                 AppId = siteId,
-                AppName = payload.AppName,
+                AppName = site.Name,
                 AppVersion = payload.AppVersion,
                 Platform = payload.Platform,
                 OsVersion = payload.OsVersion,
@@ -166,7 +166,7 @@ public static class TelemetryEndpoints
             var enriched = new EnrichedMobileEvent
             {
                 AppId = siteId,
-                AppName = payload.AppName,
+                AppName = site.Name,
                 AppVersion = payload.AppVersion,
                 Platform = payload.Platform,
                 OsVersion = payload.OsVersion,

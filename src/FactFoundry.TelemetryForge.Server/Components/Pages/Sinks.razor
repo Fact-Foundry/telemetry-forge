@@ -1,0 +1,151 @@
+@page "/sinks"
+@using FactFoundry.TelemetryForge.Server.Data
+@using FactFoundry.TelemetryForge.Server.Data.Entities
+@using Microsoft.EntityFrameworkCore
+@inject TelemetryForgeDbContext Db
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Sinks — TelemetryForge</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-2">Sinks</MudText>
+<MudText Typo="Typo.body2" Color="Color.Default" Class="mb-4">
+    Configure where enriched telemetry events are sent. The local database sink is always active.
+</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+           Class="mb-4" OnClick="OpenAddDialog">
+    Add HTTP Sink
+</MudButton>
+
+<MudTable Items="_sinks" Dense="true" Hover="true" Elevation="1">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Type</MudTh>
+        <MudTh>URL</MudTh>
+        <MudTh>Scope</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh Style="width:48px"></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.Name</MudTd>
+        <MudTd>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                     Color="@(context.Type == SinkType.LocalDatabase ? Color.Info : Color.Warning)">
+                @(context.Type == SinkType.LocalDatabase ? "Local DB" : "HTTP")
+            </MudChip>
+        </MudTd>
+        <MudTd>@(context.Url ?? "—")</MudTd>
+        <MudTd>@(context.SiteId is not null ? _siteNames.GetValueOrDefault(context.SiteId, context.SiteId) : "All Sites")</MudTd>
+        <MudTd>
+            @if (context.Type == SinkType.LocalDatabase)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success">Always On</MudChip>
+            }
+            else
+            {
+                <MudSwitch T="bool" Value="context.Enabled" ValueChanged="(val) => ToggleSink(context, val)"
+                           Color="Color.Success" />
+            }
+        </MudTd>
+        <MudTd>
+            @if (context.Type != SinkType.LocalDatabase)
+            {
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small"
+                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                                 OnClick="() => DeleteSink(context)">
+                        Delete
+                    </MudMenuItem>
+                </MudMenu>
+            }
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private List<Sink> _sinks = [];
+    private Dictionary<string, string> _siteNames = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _siteNames = await Db.Sites.AsNoTracking()
+            .ToDictionaryAsync(s => s.Id, s => s.Name);
+
+        await LoadSinks();
+    }
+
+    private async Task LoadSinks()
+    {
+        _sinks = await Db.Sinks.OrderBy(s => s.Type).ThenBy(s => s.Name).ToListAsync();
+
+        if (!_sinks.Any(s => s.Type == SinkType.LocalDatabase))
+        {
+            var dbSink = new Sink
+            {
+                Id = "local-db",
+                Name = "Local Database",
+                Type = SinkType.LocalDatabase,
+                Enabled = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            Db.Sinks.Add(dbSink);
+            await Db.SaveChangesAsync();
+            _sinks.Insert(0, dbSink);
+        }
+    }
+
+    private async Task OpenAddDialog()
+    {
+        var parameters = new DialogParameters<AddSinkDialog>
+        {
+            { x => x.Sites, await Db.Sites.AsNoTracking().ToListAsync() }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddSinkDialog>("Add HTTP Sink", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is AddSinkDialog.SinkResult data)
+        {
+            var sink = new Sink
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = data.Name,
+                Type = SinkType.HttpEndpoint,
+                Enabled = true,
+                Url = data.Url,
+                AuthHeader = string.IsNullOrWhiteSpace(data.AuthHeader) ? null : data.AuthHeader,
+                SiteId = string.IsNullOrEmpty(data.SiteId) ? null : data.SiteId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            Db.Sinks.Add(sink);
+            await Db.SaveChangesAsync();
+            await LoadSinks();
+            Snackbar.Add($"Sink \"{data.Name}\" added.", Severity.Success);
+        }
+    }
+
+    private async Task ToggleSink(Sink sink, bool enabled)
+    {
+        sink.Enabled = enabled;
+        await Db.SaveChangesAsync();
+        Snackbar.Add($"{sink.Name} {(enabled ? "enabled" : "disabled")}.", Severity.Info);
+    }
+
+    private async Task DeleteSink(Sink sink)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete Sink",
+            $"Are you sure you want to delete \"{sink.Name}\"?",
+            "Delete", cancelText: "Cancel");
+
+        if (confirmed != true)
+            return;
+
+        Db.Sinks.Remove(sink);
+        await Db.SaveChangesAsync();
+        await LoadSinks();
+        Snackbar.Add($"{sink.Name} deleted.", Severity.Info);
+    }
+}

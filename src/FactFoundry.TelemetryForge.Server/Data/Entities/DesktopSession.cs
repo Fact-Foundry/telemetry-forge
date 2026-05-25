@@ -76,6 +76,16 @@ public class DesktopSession
     public int ErrorCount { get; set; }
 
     /// <summary>
+    /// Ordered list of features used during the session.
+    /// </summary>
+    public List<string> FeaturePath { get; set; } = [];
+
+    /// <summary>
+    /// Error events captured during the session.
+    /// </summary>
+    public List<StoredErrorEvent> ErrorEvents { get; set; } = [];
+
+    /// <summary>
     /// When this record was ingested by the server.
     /// </summary>
     public DateTime IngestedAt { get; set; }
