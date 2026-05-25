@@ -22,7 +22,7 @@ Your Mobile App  (FactFoundry.TelemetryForge.Mobile)  ──→                 
 Any Platform     (raw REST call)                      ──→                         ──→  Any Sink
 ```
 
-Client packages are available in a separate repository: [telemetry-forge-sdk](https://github.com/FactFoundry/telemetry-forge-sdk)
+Client packages are available in a separate repository: [telemetry-forge-sdk](https://github.com/Fact-Foundry/telemetry-forge-sdk)
 
 ## Where Does the Data Go?
 
