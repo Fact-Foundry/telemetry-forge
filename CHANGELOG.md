@@ -13,8 +13,11 @@
 - API key validation endpoint filter — validates X-TelemetryForge-Key header and resolves site ID
 - Visitor hash resolution service — first-visit/first-install detection via hashed identifier lookup
 - IEventPublisher interface with LoggingEventPublisher for development
+- DatabaseEventPublisher — persists enriched events to WebSessions, DesktopSessions, MobileSessions tables
+- CompositeEventPublisher — fans out events to multiple sinks (database + logging)
+- Dashboard wired to real data — session counts (today/week/month), per-site breakdown, recent sessions table
 - Site registration API endpoint stub
-- Test project with xUnit — ApiKeyService and VisitorHashService coverage
+- Test project with xUnit — ApiKeyService, VisitorHashService, and DatabaseEventPublisher coverage
 - Cookie authentication with bcrypt password hashing and account lockout
 - API key generation using RandomNumberGenerator with bcrypt hashing
 - Rate limiting on telemetry endpoints

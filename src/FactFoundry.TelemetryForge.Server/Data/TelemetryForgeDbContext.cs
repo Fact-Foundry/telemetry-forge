@@ -28,6 +28,21 @@ public class TelemetryForgeDbContext : DbContext
     /// </summary>
     public DbSet<ServerSetting> ServerSettings => Set<ServerSetting>();
 
+    /// <summary>
+    /// Stored web telemetry sessions.
+    /// </summary>
+    public DbSet<WebSession> WebSessions => Set<WebSession>();
+
+    /// <summary>
+    /// Stored desktop telemetry sessions.
+    /// </summary>
+    public DbSet<DesktopSession> DesktopSessions => Set<DesktopSession>();
+
+    /// <summary>
+    /// Stored mobile telemetry sessions.
+    /// </summary>
+    public DbSet<MobileSession> MobileSessions => Set<MobileSession>();
+
     public TelemetryForgeDbContext(DbContextOptions<TelemetryForgeDbContext> options)
         : base(options)
     {
@@ -62,6 +77,30 @@ public class TelemetryForgeDbContext : DbContext
             entity.HasKey(e => e.Key);
             entity.Property(e => e.Key).IsRequired().HasMaxLength(256);
             entity.Property(e => e.Value).IsRequired();
+        });
+
+        modelBuilder.Entity<WebSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SiteId).IsRequired();
+            entity.HasIndex(e => e.SiteId);
+            entity.HasIndex(e => e.SessionStart);
+        });
+
+        modelBuilder.Entity<DesktopSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SiteId).IsRequired();
+            entity.HasIndex(e => e.SiteId);
+            entity.HasIndex(e => e.SessionStart);
+        });
+
+        modelBuilder.Entity<MobileSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SiteId).IsRequired();
+            entity.HasIndex(e => e.SiteId);
+            entity.HasIndex(e => e.SessionStart);
         });
     }
 }

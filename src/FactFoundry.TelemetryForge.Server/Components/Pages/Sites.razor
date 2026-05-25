@@ -6,17 +6,16 @@
 @inject ApiKeyService ApiKeyService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <PageTitle>Sites & Apps — TelemetryForge</PageTitle>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
-    <MudText Typo="Typo.h4">Sites &amp; Apps</MudText>
-    <MudSpacer />
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
-               OnClick="OpenRegisterDialog">
-        Add New
-    </MudButton>
-</MudStack>
+<MudText Typo="Typo.h4" Class="mb-4">Sites &amp; Apps</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+           Class="mb-4" OnClick="OpenRegisterDialog">
+    Register Site or App
+</MudButton>
 
 @if (_generatedKey is not null)
 {
@@ -167,7 +166,11 @@ else
 
     private async Task CopyKeyToClipboard()
     {
-        Snackbar.Add("API key copied to clipboard.", Severity.Success);
+        if (_generatedKey is not null)
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _generatedKey);
+            Snackbar.Add("API key copied to clipboard.", Severity.Success);
+        }
     }
 
     private static Color GetTypeColor(SiteType type) => type switch

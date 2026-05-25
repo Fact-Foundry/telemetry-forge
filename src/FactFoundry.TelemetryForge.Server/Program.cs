@@ -69,7 +69,17 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<ApiKeyService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<VisitorHashService>();
-builder.Services.AddSingleton<IEventPublisher, LoggingEventPublisher>();
+builder.Services.AddSingleton<LoggingEventPublisher>();
+builder.Services.AddScoped<DatabaseEventPublisher>();
+builder.Services.AddScoped<IEventPublisher>(sp =>
+{
+    var sinks = new IEventPublisher[]
+    {
+        sp.GetRequiredService<LoggingEventPublisher>(),
+        sp.GetRequiredService<DatabaseEventPublisher>()
+    };
+    return new CompositeEventPublisher(sinks, sp.GetRequiredService<ILogger<CompositeEventPublisher>>());
+});
 
 // Blazor + MudBlazor
 builder.Services.AddRazorComponents()
