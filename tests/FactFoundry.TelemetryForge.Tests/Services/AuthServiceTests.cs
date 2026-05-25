@@ -168,4 +168,95 @@ public class AuthServiceTests
         Assert.NotNull(user.LockedUntil);
         Assert.True(user.LockedUntil > DateTime.UtcNow);
     }
+
+    [Fact]
+    public async Task CreateOidcAdminAsync_StoresUserWithNoPassword()
+    {
+        var db = CreateDb();
+        var service = new AuthService(db);
+
+        var user = await service.CreateOidcAdminAsync("oidc@example.com", "OIDC User");
+
+        Assert.True(user.IsOidcUser);
+        Assert.Null(user.PasswordHash);
+        Assert.Equal("oidc@example.com", user.Email);
+    }
+
+    [Fact]
+    public async Task AuthenticateOidcUserAsync_ReturnsNullForNonOidcUser()
+    {
+        var db = CreateDb();
+        var service = new AuthService(db);
+        await service.CreateAdminAsync("local@example.com", "Local", "SecurePassword123");
+
+        var principal = await service.AuthenticateOidcUserAsync("local@example.com");
+
+        Assert.Null(principal);
+    }
+
+    [Fact]
+    public async Task AuthenticateOidcUserAsync_ReturnsNullForUnknownEmail()
+    {
+        var db = CreateDb();
+        var service = new AuthService(db);
+
+        var principal = await service.AuthenticateOidcUserAsync("unknown@example.com");
+
+        Assert.Null(principal);
+    }
+
+    [Fact]
+    public async Task AuthenticateOidcUserAsync_SucceedsForAuthorizedOidcUser()
+    {
+        var db = CreateDb();
+        var service = new AuthService(db);
+        await service.CreateOidcAdminAsync("oidc@example.com", "OIDC User");
+
+        var principal = await service.AuthenticateOidcUserAsync("oidc@example.com");
+
+        Assert.NotNull(principal);
+    }
+
+    [Fact]
+    public async Task IsOidcEnabledAsync_ReturnsFalseWhenNotConfigured()
+    {
+        var db = CreateDb();
+        var service = new AuthService(db);
+
+        Assert.False(await service.IsOidcEnabledAsync());
+    }
+
+    [Fact]
+    public async Task IsOidcEnabledAsync_ReturnsTrueWhenFullyConfigured()
+    {
+        var db = CreateDb();
+        var service = new AuthService(db);
+        await service.SaveServerSettingAsync("Oidc:Enabled", "true");
+        await service.SaveServerSettingAsync("Oidc:Authority", "https://login.example.com");
+        await service.SaveServerSettingAsync("Oidc:ClientId", "client-123");
+
+        Assert.True(await service.IsOidcEnabledAsync());
+    }
+
+    [Fact]
+    public async Task IsOidcEnabledAsync_ReturnsFalseWhenEnabledButMissingFields()
+    {
+        var db = CreateDb();
+        var service = new AuthService(db);
+        await service.SaveServerSettingAsync("Oidc:Enabled", "true");
+
+        Assert.False(await service.IsOidcEnabledAsync());
+    }
+
+    [Fact]
+    public async Task AuthenticateAsync_DoesNotAuthenticateOidcUserWithPassword()
+    {
+        var db = CreateDb();
+        var service = new AuthService(db);
+        await service.CreateOidcAdminAsync("oidc@example.com", "OIDC User");
+
+        var principal = await service.AuthenticateAsync("oidc@example.com", "anything");
+
+        Assert.Null(principal);
+    }
 }

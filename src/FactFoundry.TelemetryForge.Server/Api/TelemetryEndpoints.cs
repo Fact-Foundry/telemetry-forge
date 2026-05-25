@@ -31,6 +31,8 @@ public static class TelemetryEndpoints
         WebPayload payload,
         TelemetryForgeDbContext db,
         VisitorHashService visitorHashService,
+        UserAgentParserService userAgentParser,
+        GeoLocationService geoLocationService,
         IEventPublisher publisher,
         ILogger<WebPayload> logger)
     {
@@ -46,6 +48,10 @@ public static class TelemetryEndpoints
             var hashType = payload.GaHash is not null ? HashType.Ga : HashType.Ip;
             var isFirstVisit = !payload.Dnt && await visitorHashService.IsFirstSeenAsync(visitorHash, hashType, SiteType.Web, siteId);
 
+            var ua = userAgentParser.Parse(payload.UserAgent);
+            var clientIp = GeoLocationService.GetClientIp(context);
+            var geo = geoLocationService.Lookup(clientIp);
+
             var enriched = new EnrichedWebEvent
             {
                 SiteId = siteId,
@@ -56,6 +62,11 @@ public static class TelemetryEndpoints
                 DurationMs = payload.DurationMs,
                 SessionHash = payload.IpHash,
                 IsFirstVisit = isFirstVisit,
+                Country = geo.Country,
+                Region = geo.Region,
+                Browser = ua.Browser,
+                Os = ua.Os,
+                DeviceType = ua.DeviceType,
                 Referrer = payload.Referrer,
                 Language = payload.Language,
                 EntryPage = payload.EntryPage,

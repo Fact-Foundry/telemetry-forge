@@ -35,3 +35,11 @@
 - Settings page — server name, data retention, admin account management (add, delete, reset password)
 - AuthService admin management — create/delete admins, reset passwords, server settings read/write
 - AuthService test coverage — 11 tests covering create, delete, reset password, lockout, and settings CRUD
+- User-Agent parsing — extracts browser, OS, and device type from web payloads via UAParser
+- IP geolocation — resolves country/region from request IP using MaxMind GeoLite2, configurable via Settings page
+- OIDC / SSO — OpenID Connect support for admin sign-in (e.g., Microsoft Entra ID), configurable via Settings page
+- OIDC user authorization — admins must pre-authorize OIDC users by email before they can sign in
+- Login page shows OIDC sign-in button when configured, with specific error messages for auth failures
+- GeoIP and OIDC settings sections added to Settings page with active/not configured status indicators
+- AddAdminDialog supports both local (password) and OIDC (email-only) account types
+- 48 tests passing — added 8 OIDC auth tests, 8 UA parser tests, 4 GeoIP client IP extraction tests

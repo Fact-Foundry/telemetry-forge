@@ -32,6 +32,16 @@ public static class AuthEndpoints
             return Results.Redirect("/");
         });
 
+        app.MapGet("/api/auth/oidc-login", async (AuthService authService) =>
+        {
+            if (!await authService.IsOidcEnabledAsync())
+                return Results.Redirect("/login?error=oidc-disabled");
+
+            return Results.Challenge(
+                new AuthenticationProperties { RedirectUri = "/" },
+                ["oidc"]);
+        });
+
         app.MapGet("/logout", async (HttpContext context) =>
         {
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

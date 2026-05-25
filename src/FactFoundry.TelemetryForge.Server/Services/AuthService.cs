@@ -160,6 +160,58 @@ public class AuthService
         await _db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Checks whether OIDC is enabled and configured.
+    /// </summary>
+    public async Task<bool> IsOidcEnabledAsync()
+    {
+        var enabled = await GetServerSettingAsync("Oidc:Enabled");
+        if (!string.Equals(enabled, "true", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var authority = await GetServerSettingAsync("Oidc:Authority");
+        var clientId = await GetServerSettingAsync("Oidc:ClientId");
+        return !string.IsNullOrWhiteSpace(authority) && !string.IsNullOrWhiteSpace(clientId);
+    }
+
+    /// <summary>
+    /// Returns the configured OIDC display name, or "SSO" as a fallback.
+    /// </summary>
+    public async Task<string> GetOidcDisplayNameAsync()
+    {
+        return await GetServerSettingAsync("Oidc:DisplayName") ?? "SSO";
+    }
+
+    /// <summary>
+    /// Looks up an authorized OIDC admin by email. Returns a ClaimsPrincipal if the user
+    /// is pre-authorized in AdminUsers with IsOidcUser = true, or null if not authorized.
+    /// </summary>
+    public async Task<ClaimsPrincipal?> AuthenticateOidcUserAsync(string email)
+    {
+        var user = await _db.AdminUsers.FirstOrDefaultAsync(
+            u => u.Email == email && u.IsOidcUser);
+
+        return user is null ? null : CreatePrincipal(user);
+    }
+
+    /// <summary>
+    /// Creates an OIDC admin account (no password, linked by email).
+    /// </summary>
+    public async Task<AdminUser> CreateOidcAdminAsync(string email, string displayName)
+    {
+        var user = new AdminUser
+        {
+            Email = email,
+            DisplayName = displayName,
+            IsOidcUser = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.AdminUsers.Add(user);
+        await _db.SaveChangesAsync();
+        return user;
+    }
+
     private static ClaimsPrincipal CreatePrincipal(AdminUser user)
     {
         var claims = new[]

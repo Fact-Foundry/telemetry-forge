@@ -2,6 +2,7 @@
 @using FactFoundry.TelemetryForge.Server.Data.Entities
 @using FactFoundry.TelemetryForge.Server.Services
 @inject AuthService AuthService
+@inject GeoLocationService GeoLocationService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 
@@ -23,6 +24,34 @@
         </MudStack>
     </MudPaper>
 
+    @* ── GeoIP ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudText Typo="Typo.h6">GeoIP Database</MudText>
+            @if (GeoLocationService.IsAvailable)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Not Configured</MudChip>
+            }
+        </MudStack>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Path to a MaxMind GeoLite2 City database file (.mmdb). Download the free database from
+            MaxMind. A server restart is required after changing this setting.
+        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudTextField @bind-Value="_geoIpPath" Label="Database File Path" Variant="Variant.Outlined"
+                          Immediate="true" Placeholder="/path/to/GeoLite2-City.mmdb"
+                          Style="max-width:500px" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveGeoIpPath"
+                       Disabled="@(string.IsNullOrWhiteSpace(_geoIpPath))">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
     @* ── Data Retention ── *@
     <MudPaper Class="pa-4" Elevation="1">
         <MudText Typo="Typo.h6" Class="mb-2">Data Retention</MudText>
@@ -35,6 +64,37 @@
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveRetention">
                 Save
             </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @* ── OIDC / SSO ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Single Sign-On (OIDC)</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Connect an OpenID Connect provider (e.g., Microsoft Entra ID) for admin sign-in.
+            OIDC users must be pre-authorized in the Admin Accounts table below. A server restart
+            is required after changing these settings.
+        </MudText>
+        <MudStack Spacing="3">
+            <MudSwitch T="bool" @bind-Value="_oidcEnabled" Label="Enable OIDC" Color="Color.Primary" />
+            @if (_oidcEnabled)
+            {
+                <MudTextField @bind-Value="_oidcAuthority" Label="Authority URL" Variant="Variant.Outlined"
+                              Immediate="true" Placeholder="https://login.microsoftonline.com/{tenant-id}/v2.0"
+                              Style="max-width:600px" />
+                <MudTextField @bind-Value="_oidcClientId" Label="Client ID" Variant="Variant.Outlined"
+                              Immediate="true" Style="max-width:400px" />
+                <MudTextField @bind-Value="_oidcClientSecret" Label="Client Secret" Variant="Variant.Outlined"
+                              InputType="InputType.Password" Immediate="true" Style="max-width:400px" />
+                <MudTextField @bind-Value="_oidcDisplayName" Label="Button Label" Variant="Variant.Outlined"
+                              Immediate="true" Placeholder="e.g. Sign in with Microsoft"
+                              Style="max-width:300px" />
+            }
+            <div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveOidcSettings">
+                    Save
+                </MudButton>
+            </div>
         </MudStack>
     </MudPaper>
 
@@ -103,12 +163,26 @@
 
 @code {
     private string _serverName = string.Empty;
+    private string _geoIpPath = string.Empty;
     private int _retentionDays;
+    private bool _oidcEnabled;
+    private string _oidcAuthority = string.Empty;
+    private string _oidcClientId = string.Empty;
+    private string _oidcClientSecret = string.Empty;
+    private string _oidcDisplayName = string.Empty;
     private List<AdminUser> _admins = [];
 
     protected override async Task OnInitializedAsync()
     {
         _serverName = await AuthService.GetServerSettingAsync("Server:Name") ?? string.Empty;
+        _geoIpPath = await AuthService.GetServerSettingAsync("GeoIP:DatabasePath") ?? string.Empty;
+
+        _oidcEnabled = string.Equals(
+            await AuthService.GetServerSettingAsync("Oidc:Enabled"), "true", StringComparison.OrdinalIgnoreCase);
+        _oidcAuthority = await AuthService.GetServerSettingAsync("Oidc:Authority") ?? string.Empty;
+        _oidcClientId = await AuthService.GetServerSettingAsync("Oidc:ClientId") ?? string.Empty;
+        _oidcClientSecret = await AuthService.GetServerSettingAsync("Oidc:ClientSecret") ?? string.Empty;
+        _oidcDisplayName = await AuthService.GetServerSettingAsync("Oidc:DisplayName") ?? string.Empty;
 
         var retentionValue = await AuthService.GetServerSettingAsync("Data:RetentionDays");
         _retentionDays = int.TryParse(retentionValue, out var days) ? days : 0;
@@ -120,6 +194,24 @@
     {
         await AuthService.SaveServerSettingAsync("Server:Name", _serverName.Trim());
         Snackbar.Add("Server name saved.", Severity.Success);
+    }
+
+    private async Task SaveOidcSettings()
+    {
+        await AuthService.SaveServerSettingAsync("Oidc:Enabled", _oidcEnabled ? "true" : "false");
+        await AuthService.SaveServerSettingAsync("Oidc:Authority", _oidcAuthority.Trim());
+        await AuthService.SaveServerSettingAsync("Oidc:ClientId", _oidcClientId.Trim());
+        if (!string.IsNullOrWhiteSpace(_oidcClientSecret))
+            await AuthService.SaveServerSettingAsync("Oidc:ClientSecret", _oidcClientSecret.Trim());
+        await AuthService.SaveServerSettingAsync("Oidc:DisplayName",
+            string.IsNullOrWhiteSpace(_oidcDisplayName) ? "SSO" : _oidcDisplayName.Trim());
+        Snackbar.Add("OIDC settings saved. Restart the server to apply.", Severity.Success);
+    }
+
+    private async Task SaveGeoIpPath()
+    {
+        await AuthService.SaveServerSettingAsync("GeoIP:DatabasePath", _geoIpPath.Trim());
+        Snackbar.Add("GeoIP database path saved. Restart the server to apply.", Severity.Success);
     }
 
     private async Task SaveRetention()
@@ -138,7 +230,11 @@
         {
             try
             {
-                await AuthService.CreateAdminAsync(data.Email, data.DisplayName, data.Password);
+                if (data.IsOidc)
+                    await AuthService.CreateOidcAdminAsync(data.Email, data.DisplayName);
+                else
+                    await AuthService.CreateAdminAsync(data.Email, data.DisplayName, data.Password);
+
                 _admins = await AuthService.GetAdminUsersAsync();
                 Snackbar.Add($"Admin \"{data.Email}\" added.", Severity.Success);
             }

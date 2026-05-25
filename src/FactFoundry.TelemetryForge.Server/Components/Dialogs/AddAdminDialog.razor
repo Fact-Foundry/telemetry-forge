@@ -7,16 +7,30 @@
             {
                 <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
             }
+            <MudSelect T="string" @bind-Value="_accountType" Label="Account Type" Variant="Variant.Outlined">
+                <MudSelectItem T="string" Value="@("local")">Local (password)</MudSelectItem>
+                <MudSelectItem T="string" Value="@("oidc")">OIDC (external provider)</MudSelectItem>
+            </MudSelect>
             <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
                           Variant="Variant.Outlined" Required="true" Immediate="true" />
             <MudTextField @bind-Value="_displayName" Label="Display Name"
                           Variant="Variant.Outlined" Required="true" Immediate="true" />
-            <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
-                          Variant="Variant.Outlined" Required="true" Immediate="true"
-                          HelperText="Minimum 12 characters" />
-            <MudTextField @bind-Value="_confirmPassword" Label="Confirm Password"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined" Required="true" Immediate="true" />
+            @if (_accountType == "local")
+            {
+                <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
+                              Variant="Variant.Outlined" Required="true" Immediate="true"
+                              HelperText="Minimum 12 characters" />
+                <MudTextField @bind-Value="_confirmPassword" Label="Confirm Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined" Required="true" Immediate="true" />
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    This email will be authorized for OIDC sign-in. The user must authenticate
+                    through the configured identity provider.
+                </MudAlert>
+            }
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -32,18 +46,26 @@
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = null!;
 
+    private string _accountType = "local";
     private string _email = string.Empty;
     private string _displayName = string.Empty;
     private string _password = string.Empty;
     private string _confirmPassword = string.Empty;
     private string? _error;
 
-    private bool IsValid =>
-        !string.IsNullOrWhiteSpace(_email) &&
-        !string.IsNullOrWhiteSpace(_displayName) &&
-        !string.IsNullOrWhiteSpace(_password) &&
-        _password.Length >= 12 &&
-        _password == _confirmPassword;
+    private bool IsValid
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_displayName))
+                return false;
+
+            if (_accountType == "local")
+                return !string.IsNullOrWhiteSpace(_password) && _password.Length >= 12 && _password == _confirmPassword;
+
+            return true;
+        }
+    }
 
     private void Cancel() => MudDialog.Cancel();
 
@@ -51,20 +73,23 @@
     {
         _error = null;
 
-        if (_password.Length < 12)
+        if (_accountType == "local")
         {
-            _error = "Password must be at least 12 characters.";
-            return;
+            if (_password.Length < 12)
+            {
+                _error = "Password must be at least 12 characters.";
+                return;
+            }
+
+            if (_password != _confirmPassword)
+            {
+                _error = "Passwords do not match.";
+                return;
+            }
         }
 
-        if (_password != _confirmPassword)
-        {
-            _error = "Passwords do not match.";
-            return;
-        }
-
-        MudDialog.Close(DialogResult.Ok(new AdminResult(_email, _displayName, _password)));
+        MudDialog.Close(DialogResult.Ok(new AdminResult(_email, _displayName, _password, _accountType == "oidc")));
     }
 
-    public record AdminResult(string Email, string DisplayName, string Password);
+    public record AdminResult(string Email, string DisplayName, string Password, bool IsOidc);
 }

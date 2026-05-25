@@ -4,7 +4,10 @@ using FactFoundry.TelemetryForge.Server.Components;
 using FactFoundry.TelemetryForge.Server.Data;
 using FactFoundry.TelemetryForge.Server.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,16 +34,64 @@ builder.Services.AddDbContext<TelemetryForgeDbContext>(options =>
 });
 
 // Authentication
+builder.Services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, OidcSettingsProvider>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/login";
         options.LogoutPath = "/logout";
         options.Cookie.HttpOnly = true;
-        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
             ? CookieSecurePolicy.SameAsRequest
             : CookieSecurePolicy.Always;
+    })
+    .AddOpenIdConnect("oidc", options =>
+    {
+        options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.ResponseType = OpenIdConnectResponseType.Code;
+        options.SaveTokens = false;
+        options.GetClaimsFromUserInfoEndpoint = true;
+        options.CallbackPath = "/signin-oidc";
+        options.Scope.Add("openid");
+        options.Scope.Add("profile");
+        options.Scope.Add("email");
+        options.Events = new OpenIdConnectEvents
+        {
+            OnTicketReceived = async context =>
+            {
+                var email = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                    ?? context.Principal?.FindFirst("email")?.Value
+                    ?? context.Principal?.FindFirst("preferred_username")?.Value;
+
+                if (string.IsNullOrEmpty(email))
+                {
+                    context.HandleResponse();
+                    context.HttpContext.Response.Redirect("/login?error=oidc-noemail");
+                    return;
+                }
+
+                var authService = context.HttpContext.RequestServices.GetRequiredService<AuthService>();
+                var principal = await authService.AuthenticateOidcUserAsync(email);
+
+                if (principal is null)
+                {
+                    context.HandleResponse();
+                    context.HttpContext.Response.Redirect("/login?error=oidc-unauthorized");
+                    return;
+                }
+
+                context.Principal = principal;
+            },
+            OnRemoteFailure = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<OpenIdConnectOptions>>();
+                logger.LogError(context.Failure, "OIDC authentication failed");
+                context.HandleResponse();
+                context.Response.Redirect("/login?error=oidc-failed");
+                return Task.CompletedTask;
+            }
+        };
     });
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
@@ -69,6 +120,8 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<ApiKeyService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<VisitorHashService>();
+builder.Services.AddSingleton<UserAgentParserService>();
+builder.Services.AddSingleton<GeoLocationService>();
 builder.Services.AddSingleton<LoggingEventPublisher>();
 builder.Services.AddScoped<DatabaseEventPublisher>();
 builder.Services.AddScoped<IEventPublisher>(sp =>

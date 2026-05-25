@@ -14,11 +14,9 @@
                 Sign in to the admin dashboard
             </MudText>
 
-            @if (_showError)
+            @if (_errorMessage is not null)
             {
-                <MudAlert Severity="Severity.Error" Dense="true">
-                    Invalid email or password, or account is locked.
-                </MudAlert>
+                <MudAlert Severity="Severity.Error" Dense="true">@_errorMessage</MudAlert>
             }
 
             <form method="post" action="/api/auth/login">
@@ -35,6 +33,15 @@
                     </MudButton>
                 </div>
             </form>
+
+            @if (_oidcEnabled)
+            {
+                <MudDivider Class="my-2" />
+                <MudButton Href="/api/auth/oidc-login" Variant="Variant.Outlined" Color="Color.Primary"
+                           FullWidth="true" StartIcon="@Icons.Material.Filled.Login">
+                    Sign in with @_oidcDisplayName
+                </MudButton>
+            }
         </MudStack>
     </MudPaper>
 </MudContainer>
@@ -42,7 +49,9 @@
 @code {
     private string _email = string.Empty;
     private string _password = string.Empty;
-    private bool _showError;
+    private string? _errorMessage;
+    private bool _oidcEnabled;
+    private string _oidcDisplayName = "SSO";
 
     [SupplyParameterFromQuery(Name = "error")]
     private string? Error { get; set; }
@@ -52,6 +61,18 @@
         if (await AuthService.RequiresSetupAsync())
             Navigation.NavigateTo("/setup");
 
-        _showError = Error == "invalid";
+        _oidcEnabled = await AuthService.IsOidcEnabledAsync();
+        if (_oidcEnabled)
+            _oidcDisplayName = await AuthService.GetOidcDisplayNameAsync();
+
+        _errorMessage = Error switch
+        {
+            "invalid" => "Invalid email or password, or account is locked.",
+            "oidc-unauthorized" => "Your account is not authorized. An admin must add your email first.",
+            "oidc-noemail" => "No email claim received from the identity provider.",
+            "oidc-failed" => "Authentication with the identity provider failed.",
+            "oidc-disabled" => "SSO is not configured on this server.",
+            _ => null
+        };
     }
 }
