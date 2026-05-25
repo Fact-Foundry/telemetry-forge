@@ -43,3 +43,9 @@
 - GeoIP and OIDC settings sections added to Settings page with active/not configured status indicators
 - AddAdminDialog supports both local (password) and OIDC (email-only) account types
 - 48 tests passing — added 8 OIDC auth tests, 8 UA parser tests, 4 GeoIP client IP extraction tests
+
+### Docs
+
+- README — added "What Gets Stored" section documenting stored fields for web, desktop, and mobile sessions
+- Deployment guide — configuration, database setup, bare metal/Docker/systemd deployment, reverse proxy, GeoIP, and security notes
+- ADR-003 — proposed move from end-of-session flush to per-request web telemetry for real-time visibility and cross-platform compatibility

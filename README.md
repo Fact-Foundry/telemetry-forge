@@ -33,6 +33,42 @@ TelemetryForge Server uses a configurable event pipeline. After receiving and en
 
 Sinks can run simultaneously — store locally for ad-hoc queries while streaming to Fabric Eventhouse for real-time Power BI dashboards. Configure them per-site or globally.
 
+## What Gets Stored
+
+TelemetryForge stores session-level summaries, not individual page views or click streams. Raw IP addresses are never persisted — geolocation (if configured) runs at ingestion time and only the resolved country and region are kept. Visitor identifiers are one-way hashed before storage.
+
+### Web Sessions
+
+| Category | Fields |
+|----------|--------|
+| **Identity** | Daily-salted session hash, first-visit flag |
+| **Timing** | Session start, session end, duration |
+| **Pages** | Entry page, exit page, page count, ordered page path |
+| **Browser** | Browser name, OS, device type (parsed from User-Agent), language, referrer |
+| **Location** | Country, region (requires optional GeoIP database) |
+| **Errors** | HTTP status codes encountered during the session |
+
+### Desktop Sessions
+
+| Category | Fields |
+|----------|--------|
+| **Identity** | Hashed machine fingerprint, first-install flag |
+| **App** | Application name, version, platform, OS version |
+| **Timing** | Session start, session end, duration |
+| **Usage** | Feature count, ordered feature path |
+| **Errors** | Error count, error events (message, stack trace, timestamp) |
+| **Licensing** | License tier (if a JWT is present) |
+
+### Mobile Sessions
+
+| Category | Fields |
+|----------|--------|
+| **Identity** | Hashed device identifier, identifier type, first-install flag |
+| **App** | Application name, version, platform, OS version |
+| **Timing** | Session start, session end, duration |
+| **Usage** | Feature count, ordered feature path |
+| **Errors** | Error count, error events (message, stack trace, timestamp) |
+
 ## Getting Started
 
 1. Deploy the server (Docker, bare metal, or cloud)
