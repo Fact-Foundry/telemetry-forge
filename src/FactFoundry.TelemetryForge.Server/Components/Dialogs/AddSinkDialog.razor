@@ -1,0 +1,50 @@
+@using FactFoundry.TelemetryForge.Server.Data.Entities
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined"
+                          Placeholder="e.g. Fabric Eventhouse" Required="true" Immediate="true" />
+            <MudTextField @bind-Value="_url" Label="URL" Variant="Variant.Outlined"
+                          Placeholder="https://endpoint.example.com/api/events" Required="true" Immediate="true" />
+            <MudTextField @bind-Value="_authHeader" Label="Authorization Header (optional)" Variant="Variant.Outlined"
+                          Placeholder="Bearer your-token-here" Immediate="true" />
+            <MudSelect T="string" @bind-Value="_siteId" Label="Scope" Variant="Variant.Outlined">
+                <MudSelectItem T="string" Value="@string.Empty">All Sites</MudSelectItem>
+                @foreach (var site in Sites)
+                {
+                    <MudSelectItem T="string" Value="@site.Id">@site.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_url))">
+            Add Sink
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<Site> Sites { get; set; } = [];
+
+    private string _name = string.Empty;
+    private string _url = string.Empty;
+    private string _authHeader = string.Empty;
+    private string _siteId = string.Empty;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(new SinkResult(_name, _url, _authHeader, _siteId)));
+    }
+
+    public record SinkResult(string Name, string Url, string AuthHeader, string SiteId);
+}

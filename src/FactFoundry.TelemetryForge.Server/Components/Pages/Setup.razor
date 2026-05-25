@@ -1,0 +1,148 @@
+@page "/setup"
+@layout EmptyLayout
+@using FactFoundry.TelemetryForge.Server.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Setup — TelemetryForge</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h4">Welcome to TelemetryForge</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Default">
+                Create your admin account to get started. You'll use this to manage sites, API keys, and settings.
+            </MudText>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+
+            @if (_step == 0)
+            {
+                <MudText Typo="Typo.h6">Step 1 — Admin Account</MudText>
+                <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
+                              Variant="Variant.Outlined" Immediate="true" />
+                <MudTextField @bind-Value="_displayName" Label="Display Name"
+                              Variant="Variant.Outlined" Immediate="true" />
+                <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
+                              Variant="Variant.Outlined" Immediate="true"
+                              HelperText="Minimum 12 characters" />
+                <MudTextField @bind-Value="_confirmPassword" Label="Confirm Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined" Immediate="true" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="NextStep">
+                    Continue
+                </MudButton>
+            }
+            else if (_step == 1)
+            {
+                <MudText Typo="Typo.h6">Step 2 — Server Name</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Default">
+                    Give this TelemetryForge instance a name. This is shown in the admin UI header.
+                </MudText>
+                <MudTextField @bind-Value="_serverName" Label="Server Name"
+                              Variant="Variant.Outlined" Immediate="true"
+                              Placeholder="e.g. Production, Staging, My Dev Server" />
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Outlined" OnClick="() => _step = 0">Back</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CompleteSetup"
+                               Disabled="_creating">
+                        @if (_creating)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Complete Setup
+                    </MudButton>
+                </MudStack>
+            }
+            else
+            {
+                <MudStack Spacing="3" AlignItems="AlignItems.Center" Class="py-4">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success"
+                             Size="Size.Large" />
+                    <MudText Typo="Typo.h5">You're all set!</MudText>
+                    <MudText Typo="Typo.body1" Align="Align.Center">
+                        Your admin account has been created. Sign in to start managing your telemetry.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               Href="/login" Class="mt-2">
+                        Sign In
+                    </MudButton>
+                </MudStack>
+            }
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private int _step;
+    private string _email = string.Empty;
+    private string _displayName = string.Empty;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private string _serverName = string.Empty;
+    private bool _creating;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AuthService.RequiresSetupAsync())
+            Navigation.NavigateTo("/");
+    }
+
+    private void NextStep()
+    {
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_displayName)
+            || string.IsNullOrWhiteSpace(_password) || string.IsNullOrWhiteSpace(_confirmPassword))
+        {
+            _error = "All fields are required.";
+            return;
+        }
+
+        if (_password.Length < 12)
+        {
+            _error = "Password must be at least 12 characters.";
+            return;
+        }
+
+        if (_password != _confirmPassword)
+        {
+            _error = "Passwords do not match.";
+            return;
+        }
+
+        _step = 1;
+    }
+
+    private async Task CompleteSetup()
+    {
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_serverName))
+        {
+            _error = "Server name is required.";
+            return;
+        }
+
+        _creating = true;
+
+        try
+        {
+            await AuthService.CreateInitialAdminAsync(_email, _displayName, _password);
+            await AuthService.SaveServerSettingAsync("Server:Name", _serverName);
+            _step = 2;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Setup failed: {ex.Message}";
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+}

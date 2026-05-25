@@ -1,0 +1,94 @@
+@page "/"
+
+<PageTitle>Dashboard — TelemetryForge</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Sessions Today</MudText>
+            <MudText Typo="Typo.h4">@_today</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Sessions This Week</MudText>
+            <MudText Typo="Typo.h4">@_thisWeek</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Sessions This Month</MudText>
+            <MudText Typo="Typo.h4">@_thisMonth</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@if (_sites.Count > 0)
+{
+    <MudText Typo="Typo.h6" Class="mt-6 mb-2">Sites & Apps</MudText>
+    <MudTable Items="_sites" Dense="true" Hover="true" Elevation="1">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Type</MudTh>
+            <MudTh Style="text-align:right">Today</MudTh>
+            <MudTh Style="text-align:right">This Week</MudTh>
+            <MudTh Style="text-align:right">Total</MudTh>
+            <MudTh>Last Received</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Name</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                         Color="@GetTypeColor(context.Type)">@context.Type</MudChip>
+            </MudTd>
+            <MudTd Style="text-align:right">@context.Today</MudTd>
+            <MudTd Style="text-align:right">@context.ThisWeek</MudTd>
+            <MudTd Style="text-align:right">@context.Total</MudTd>
+            <MudTd>@FormatLastReceived(context.LastPayloadAt)</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+else
+{
+    <MudText Typo="Typo.h6" Class="mt-6 mb-2">Registered Sites</MudText>
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.body1" Color="Color.Default">
+            No sites registered yet. Go to <MudLink Href="/sites">Sites &amp; Apps</MudLink> to register your first site.
+        </MudText>
+    </MudPaper>
+}
+
+@if (_recentSessions.Count > 0)
+{
+    <MudText Typo="Typo.h6" Class="mt-6 mb-2">Recent Sessions</MudText>
+    <MudTable Items="_recentSessions" Dense="true" Hover="true" Elevation="1">
+        <HeaderContent>
+            <MudTh>Site</MudTh>
+            <MudTh>Type</MudTh>
+            <MudTh>Visitor</MudTh>
+            <MudTh>Country</MudTh>
+            <MudTh>Platform</MudTh>
+            <MudTh Style="text-align:right">Duration</MudTh>
+            <MudTh>Time</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.SiteName</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                         Color="@GetTypeColor(context.Type)">@context.Type</MudChip>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                         Color="@(context.IsFirstSeen ? Color.Success : Color.Default)">
+                    @(context.IsFirstSeen ? "New" : "Returning")
+                </MudChip>
+            </MudTd>
+            <MudTd>@(context.Country ?? "—")</MudTd>
+            <MudTd>@context.Platform</MudTd>
+            <MudTd Style="text-align:right">@FormatDuration(context.DurationMs)</MudTd>
+            <MudTd>@context.SessionStart.ToString("g")</MudTd>
+        </RowTemplate>
+    </MudTable>
+}

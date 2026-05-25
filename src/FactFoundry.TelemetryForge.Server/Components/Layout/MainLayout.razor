@@ -1,0 +1,93 @@
+@inherits LayoutComponentBase
+@using FactFoundry.TelemetryForge.Server.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<MudThemeProvider @bind-IsDarkMode="_isDarkMode" Theme="_theme" DefaultScrollbar="true" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <AuthorizeView>
+        <Authorized>
+            <MudLayout>
+                <MudAppBar Elevation="1">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                                   OnClick="ToggleDrawer" />
+                    <MudText Typo="Typo.h6" Class="ml-3">TelemetryForge</MudText>
+                    <MudSpacer />
+                    <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                                   Color="Color.Inherit" OnClick="ToggleDarkMode" />
+                    <MudMenu Icon="@Icons.Material.Filled.Person" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight"
+                             TransformOrigin="Origin.TopRight">
+                        <MudMenuItem Href="/logout" Icon="@Icons.Material.Filled.Logout">Sign Out</MudMenuItem>
+                    </MudMenu>
+                </MudAppBar>
+
+                <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+                    <MudNavMenu>
+                        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+                            Dashboard
+                        </MudNavLink>
+                        <MudNavLink Href="/sites" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dns">
+                            Sites &amp; Apps
+                        </MudNavLink>
+                        <MudNavLink Href="/events" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Timeline">
+                            Event Stream
+                        </MudNavLink>
+                        <MudNavLink Href="/sinks" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Output">
+                            Sinks
+                        </MudNavLink>
+                        <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">
+                            Settings
+                        </MudNavLink>
+                    </MudNavMenu>
+                </MudDrawer>
+
+                <MudMainContent Class="pa-4">
+                    @Body
+                </MudMainContent>
+            </MudLayout>
+        </Authorized>
+        <NotAuthorized>
+            @{ Navigation.NavigateTo("/login", forceLoad: true); }
+        </NotAuthorized>
+    </AuthorizeView>
+}
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = true;
+    private bool _loading = true;
+
+    private readonly MudTheme _theme = new()
+    {
+        Typography = new Typography
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["Inter", "Helvetica", "Arial", "sans-serif"]
+            }
+        }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await AuthService.RequiresSetupAsync())
+        {
+            Navigation.NavigateTo("/setup", forceLoad: true);
+            return;
+        }
+
+        _loading = false;
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+    private void ToggleDarkMode() => _isDarkMode = !_isDarkMode;
+}

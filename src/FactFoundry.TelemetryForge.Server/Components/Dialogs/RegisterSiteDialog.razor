@@ -1,0 +1,40 @@
+@using FactFoundry.TelemetryForge.Server.Data.Entities
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined"
+                          Placeholder="e.g. My Website, Desktop App" Required="true"
+                          Immediate="true" />
+            <MudSelect @bind-Value="_type" Label="Type" Variant="Variant.Outlined" Required="true">
+                <MudSelectItem Value="SiteType.Web">Web</MudSelectItem>
+                <MudSelectItem Value="SiteType.Desktop">Desktop</MudSelectItem>
+                <MudSelectItem Value="SiteType.Mobile">Mobile</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="string.IsNullOrWhiteSpace(_name)">
+            Register
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private string _name = string.Empty;
+    private SiteType _type = SiteType.Web;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(new RegisterResult(_name, _type)));
+    }
+
+    public record RegisterResult(string Name, SiteType Type);
+}
