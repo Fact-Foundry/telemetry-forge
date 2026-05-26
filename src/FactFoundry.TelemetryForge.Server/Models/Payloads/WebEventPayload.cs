@@ -40,7 +40,7 @@ public class WebEventPayload
     /// <summary>
     /// Page path visited or where the event occurred.
     /// </summary>
-    [JsonPropertyName("page")]
+    [JsonPropertyName("page_path")]
     public string Page { get; set; } = string.Empty;
 
     /// <summary>

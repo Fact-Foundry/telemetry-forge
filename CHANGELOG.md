@@ -5,6 +5,7 @@
 ### Fixes
 
 - Web timestamp field changed from DateTime to DateTimeOffset — fixes 400 rejection of SDK payloads with fractional-second ISO 8601 timestamps
+- Fixed page_path field name mismatch — server expected "page" but SDK sends "page_path", causing empty Page on all web events
 
 ### Features
 
