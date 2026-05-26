@@ -26,7 +26,7 @@ public partial class Dashboard : ComponentBase
         var todayStart = now.Date;
         var weekStart = todayStart.AddDays(-(int)todayStart.DayOfWeek);
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var activeWindow = now.AddMinutes(-5);
+        var activeWindow = (DateTimeOffset)now.AddMinutes(-5);
 
         _activeNow = await Db.WebEvents
             .Where(e => e.Timestamp >= activeWindow && !e.IsBot)
@@ -78,7 +78,7 @@ public partial class Dashboard : ComponentBase
             .ToListAsync();
 
         _recentSessions = recentWebEvents
-            .Select(e => new RecentSession { SiteName = e.SiteName, Type = SiteType.Web, Platform = e.Browser ?? "Unknown", DurationMs = 0, SessionStart = e.Timestamp, IsFirstSeen = e.IsFirstVisit, Country = e.Country, Page = e.Page })
+            .Select(e => new RecentSession { SiteName = e.SiteName, Type = SiteType.Web, Platform = e.Browser ?? "Unknown", DurationMs = 0, SessionStart = e.Timestamp.UtcDateTime, IsFirstSeen = e.IsFirstVisit, Country = e.Country, Page = e.Page })
             .Concat(desktopSessions.OrderByDescending(s => s.IngestedAt).Take(10)
                 .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Desktop, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart, IsFirstSeen = s.IsFirstInstall }))
             .Concat(mobileSessions.OrderByDescending(s => s.IngestedAt).Take(10)

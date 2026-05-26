@@ -98,7 +98,7 @@ public class WebEventPayload
     /// When this event occurred.
     /// </summary>
     [JsonPropertyName("timestamp")]
-    public DateTime Timestamp { get; set; }
+    public DateTimeOffset Timestamp { get; set; }
 
     /// <summary>
     /// Whether the visitor has Do Not Track enabled.

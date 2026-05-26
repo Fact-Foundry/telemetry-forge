@@ -98,7 +98,7 @@ public class WebEvent
     /// <summary>
     /// When this event occurred on the client.
     /// </summary>
-    public DateTime Timestamp { get; set; }
+    public DateTimeOffset Timestamp { get; set; }
 
     /// <summary>
     /// When this event was ingested by the server.

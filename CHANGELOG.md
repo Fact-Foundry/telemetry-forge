@@ -2,6 +2,10 @@
 
 ## [1.1.0]
 
+### Fixes
+
+- Web timestamp field changed from DateTime to DateTimeOffset — fixes 400 rejection of SDK payloads with fractional-second ISO 8601 timestamps
+
 ### Features
 
 - Initial project scaffold with Blazor Server + MudBlazor admin UI

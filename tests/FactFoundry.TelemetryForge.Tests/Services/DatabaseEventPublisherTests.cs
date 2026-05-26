@@ -33,7 +33,7 @@ public class DatabaseEventPublisherTests
             StatusCode = 200,
             EventType = "page_view",
             Language = "en-US",
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTimeOffset.UtcNow
         };
 
         await publisher.PublishAsync(webEvent);
@@ -63,7 +63,7 @@ public class DatabaseEventPublisherTests
             EventName = "form_submit",
             EventData = new Dictionary<string, object> { ["subject"] = "inquiry" },
             Language = "en-US",
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTimeOffset.UtcNow
         };
 
         await publisher.PublishAsync(webEvent);
@@ -270,7 +270,7 @@ public class DatabaseEventPublisherTests
             EventType = "page_view",
             IsBot = true,
             Language = "",
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTimeOffset.UtcNow
         };
 
         var humanEvent = new EnrichedWebEvent
@@ -282,7 +282,7 @@ public class DatabaseEventPublisherTests
             EventType = "page_view",
             IsBot = false,
             Language = "en-US",
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTimeOffset.UtcNow
         };
 
         await publisher.PublishAsync(botEvent);
@@ -308,7 +308,7 @@ public class DatabaseEventPublisherTests
             SessionHash = "hash",
             Page = "/",
             Language = "en",
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTimeOffset.UtcNow
         });
 
         var webEvent = await db.WebEvents.SingleAsync();

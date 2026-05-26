@@ -54,7 +54,7 @@ public class SessionMaterializationService : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<TelemetryForgeDbContext>();
 
         var inactivityMinutes = await GetInactivityMinutes(db);
-        var cutoff = DateTime.UtcNow.AddMinutes(-inactivityMinutes);
+        var cutoff = DateTimeOffset.UtcNow.AddMinutes(-inactivityMinutes);
 
         var candidateHashes = await db.WebEvents
             .Where(e => !e.Materialized)
@@ -96,8 +96,8 @@ public class SessionMaterializationService : BackgroundService
                 SiteId = firstEvent.SiteId,
                 SiteName = firstEvent.SiteName,
                 Platform = firstEvent.Browser ?? string.Empty,
-                SessionStart = events[0].Timestamp,
-                SessionEnd = events[^1].Timestamp,
+                SessionStart = events[0].Timestamp.UtcDateTime,
+                SessionEnd = events[^1].Timestamp.UtcDateTime,
                 DurationMs = (int)(events[^1].Timestamp - events[0].Timestamp).TotalMilliseconds,
                 IsFirstVisit = events.Any(e => e.IsFirstVisit),
                 Country = firstEvent.Country,

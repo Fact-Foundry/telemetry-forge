@@ -62,5 +62,5 @@ public class EnrichedWebEvent
     public bool IsBot { get; set; }
 
     [JsonPropertyName("timestamp")]
-    public DateTime Timestamp { get; set; }
+    public DateTimeOffset Timestamp { get; set; }
 }

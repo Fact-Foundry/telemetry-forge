@@ -48,7 +48,7 @@ public partial class EventStream : ComponentBase
                 IsBot = e.IsBot,
                 Platform = e.Browser ?? "Unknown",
                 IngestedAt = e.IngestedAt,
-                Timestamp = e.Timestamp,
+                Timestamp = e.Timestamp.UtcDateTime,
                 Page = e.Page,
                 StatusCode = e.StatusCode,
                 EventName = e.EventName,
