@@ -1,18 +1,21 @@
+using System.Text.RegularExpressions;
 using UAParser;
 
 namespace FactFoundry.TelemetryForge.Server.Services;
 
 /// <summary>
-/// Parses User-Agent strings to extract browser, OS, and device type information.
+/// Parses User-Agent strings and Client Hints to extract browser, OS, and device type information.
+/// Prefers Client Hints when available for more accurate identification.
 /// </summary>
-public class UserAgentParserService
+public partial class UserAgentParserService
 {
     private static readonly Parser Parser = Parser.GetDefault();
 
     /// <summary>
-    /// Parses a User-Agent string and returns the extracted components.
+    /// Parses a User-Agent string with optional Client Hints and returns the extracted components.
+    /// When Client Hints are available, they take precedence over the UA string for browser and platform.
     /// </summary>
-    public UserAgentInfo Parse(string userAgent)
+    public UserAgentInfo Parse(string userAgent, string? secChUa = null, string? secChUaMobile = null, string? secChUaPlatform = null)
     {
         if (string.IsNullOrWhiteSpace(userAgent))
             return new UserAgentInfo(null, null, null);
@@ -23,8 +26,82 @@ public class UserAgentParserService
         var os = FormatOs(clientInfo.OS);
         var deviceType = ClassifyDevice(clientInfo.Device, userAgent);
 
+        if (!string.IsNullOrWhiteSpace(secChUa))
+        {
+            var chBrowser = ParseBrowserFromClientHints(secChUa);
+            if (chBrowser is not null)
+                browser = chBrowser;
+        }
+
+        if (!string.IsNullOrWhiteSpace(secChUaPlatform))
+        {
+            var platform = secChUaPlatform.Trim('"');
+            if (!string.IsNullOrEmpty(platform) && platform != "Unknown")
+                os = platform;
+        }
+
+        if (!string.IsNullOrWhiteSpace(secChUaMobile) && deviceType is not "bot" and not "tablet")
+        {
+            deviceType = secChUaMobile.Trim() == "?1" ? "mobile" : "desktop";
+        }
+
         return new UserAgentInfo(browser, os, deviceType);
     }
+
+    private static string? ParseBrowserFromClientHints(string secChUa)
+    {
+        var brands = BrandRegex().Matches(secChUa);
+        if (brands.Count == 0)
+            return null;
+
+        string? bestBrand = null;
+        string? bestVersion = null;
+
+        foreach (Match brand in brands)
+        {
+            var name = brand.Groups[1].Value.Trim();
+            var version = brand.Groups[2].Value.Trim();
+
+            if (name.Contains("Not") || name.Contains("Chromium") || name.Contains("Google Chrome"))
+                continue;
+
+            bestBrand = name;
+            bestVersion = version;
+        }
+
+        if (bestBrand is null)
+        {
+            foreach (Match brand in brands)
+            {
+                var name = brand.Groups[1].Value.Trim();
+                var version = brand.Groups[2].Value.Trim();
+
+                if (name.Contains("Not"))
+                    continue;
+
+                if (name == "Google Chrome")
+                {
+                    bestBrand = "Chrome";
+                    bestVersion = version;
+                    break;
+                }
+
+                if (name == "Chromium")
+                {
+                    bestBrand = name;
+                    bestVersion = version;
+                }
+            }
+        }
+
+        if (bestBrand is null)
+            return null;
+
+        return string.IsNullOrEmpty(bestVersion) ? bestBrand : $"{bestBrand} {bestVersion}";
+    }
+
+    [GeneratedRegex("\"([^\"]+)\";v=\"([^\"]+)\"")]
+    private static partial Regex BrandRegex();
 
     private static string? FormatBrowser(UserAgent ua)
     {

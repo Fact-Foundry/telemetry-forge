@@ -14,8 +14,8 @@ The SDK packages need updates to match the server's current ingestion API. The s
 
 The server now expects `WebEventPayload` (one event per request) instead of `WebSessionPayload` (one payload per session). The SDK's `TelemetryForgeMiddleware` and `TelemetryForgeCircuitHandler` need to be rewritten:
 
-- **Replace `WebSessionPayload` with `WebEventPayload`** — fields: `ip_address`, `ga_value`, `session_id`, `user_agent`, `referrer`, `language`, `page`, `status_code`, `event_type`, `event_name`, `event_data`, `target_url`, `country`, `region`, `timestamp`, `dnt`
-- **Middleware**: post one event per request (event_type=page_view) instead of accumulating a session. Send raw IP — server does the hashing. Read CloudFlare headers (CF-IPCountry, CF-Region) if available and include as `country`/`region`
+- **Replace `WebSessionPayload` with `WebEventPayload`** — fields: `ip_address`, `ga_value`, `session_id`, `user_agent`, `referrer`, `language`, `page`, `status_code`, `event_type`, `event_name`, `event_data`, `target_url`, `country`, `region`, `sec_ch_ua`, `sec_ch_ua_mobile`, `sec_ch_ua_platform`, `timestamp`, `dnt`
+- **Middleware**: post one event per request (event_type=page_view) instead of accumulating a session. Send raw IP — server does the hashing. Read CloudFlare headers (CF-IPCountry, CF-Region) if available and include as `country`/`region`. Read Client Hints headers (Sec-CH-UA, Sec-CH-UA-Mobile, Sec-CH-UA-Platform) for accurate browser identification
 - **Circuit handler**: post a page_view event on each `TrackNavigation()` call instead of accumulating and flushing at circuit close. Optionally send a circuit_close event when the circuit ends (for last-page duration calculation)
 - **Custom event API**: add `ITelemetryForge.TrackEvent(string eventName, Dictionary<string, object>? eventData)` so developers can fire server-side custom events (event_type=custom)
 - **Link click tracking (Blazor only, opt-in)**: add JS interop to capture anchor clicks and send link_click events with target_url. Acceptable because Blazor already requires JS

@@ -63,7 +63,8 @@
 - Added country and region fields to web payload for SDK-provided geolocation
 - Removed SessionHash from materialized WebSession entity (privacy — no trackable data in session records)
 - Renamed payload fields: ip_hash → ip_address, ga_hash → ga_value (server does the hashing, not the SDK)
-- 52 tests passing — added bot flag persistence test
+- Client Hints support — sec_ch_ua, sec_ch_ua_mobile, sec_ch_ua_platform fields on web payload for accurate browser identification (e.g., Brave vs Chrome)
+- 57 tests passing — added Client Hints parser tests
 
 ### Docs
 

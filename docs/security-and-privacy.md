@@ -91,7 +91,8 @@ SDK sends: session_id, ip_address, ga_value, user_agent, page, ...
 │     If empty, fallback to GeoIP database on IP      │
 │     (IP discarded after this step)                  │
 │                                                     │
-│  5. Parse User-Agent → Browser, OS, DeviceType      │
+│  5. Parse User-Agent + Client Hints → Browser, OS,  │
+│     DeviceType (Client Hints preferred when present) │
 │                                                     │
 │  6. Bot detection:                                  │
 │     → UA matches known bot patterns? IsBot = true   │
@@ -114,7 +115,7 @@ SDK sends: session_id, ip_address, ga_value, user_agent, page, ...
 | IsFirstVisit | Derived from VisitorHash lookup | Boolean only |
 | Page, StatusCode | Request data | No query strings or form data |
 | Country, Region | SDK-provided (CloudFlare headers) or GeoIP database fallback | IP discarded after fallback lookup |
-| Browser, OS, DeviceType | Parsed from User-Agent | Coarse values only (e.g., "Chrome 125", not the full UA string) |
+| Browser, OS, DeviceType | Parsed from User-Agent and Client Hints | Coarse values only (e.g., "Brave 130", not the full UA string or raw hints) |
 | Referrer | HTTP Referer header | As sent by the browser |
 | Language | Accept-Language header | First value only |
 | EventType, EventName, EventData | Developer-defined | Custom events are opt-in |
@@ -127,6 +128,7 @@ SDK sends: session_id, ip_address, ga_value, user_agent, page, ...
 | Raw IP address | Geolocation, hashing, rate limiting | Never persisted |
 | Raw session_id | Hashing into SessionHash | Never persisted |
 | Raw User-Agent string | Parsing browser/OS/device | Full string not stored (only parsed components) |
+| Client Hints (Sec-CH-UA, Sec-CH-UA-Mobile, Sec-CH-UA-Platform) | Accurate browser/platform identification | Never persisted (only parsed components stored) |
 | Raw _ga cookie value | Visitor identity hashing | Never persisted |
 
 ### Stored on VisitorHash (Identity Table Only)

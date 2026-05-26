@@ -87,6 +87,7 @@ public class WebTelemetryOptions
 | Accept-Language | Request header | Locale/language |
 | IP address | `X-Forwarded-For` / connection | Sent raw to server for hashing; never stored raw |
 | `_ga` value | Request cookie | Only if present; sent raw to server for hashing; never stored raw |
+| Client Hints | `Sec-CH-UA`, `Sec-CH-UA-Mobile`, `Sec-CH-UA-Platform` headers | Accurate browser/platform identification |
 | Request path | URL | Page visited |
 | Response status | Pipeline | Error tracking |
 | Response time | Middleware brackets | Performance |
@@ -120,6 +121,9 @@ This provides a true session boundary without reconstructing sessions from fragm
   "target_url":     "string | null (only for link_click events)",
   "country":        "string | null (from CloudFlare CF-IPCountry header)",
   "region":         "string | null (from CloudFlare CF-Region header)",
+  "sec_ch_ua":      "string | null (Sec-CH-UA client hint for accurate browser identification)",
+  "sec_ch_ua_mobile": "string | null (Sec-CH-UA-Mobile client hint, ?0 or ?1)",
+  "sec_ch_ua_platform": "string | null (Sec-CH-UA-Platform client hint, e.g. Windows)",
   "timestamp":      "ISO 8601 datetime",
   "dnt":            "boolean"
 }

@@ -79,4 +79,56 @@ public class UserAgentParserServiceTests
 
         Assert.Equal("mobile", result.DeviceType);
     }
+
+    [Fact]
+    public void Parse_ClientHints_BraveIdentifiedCorrectly()
+    {
+        var ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+        var secChUa = "\"Brave\";v=\"130\", \"Chromium\";v=\"130\", \"Not?A_Brand\";v=\"99\"";
+
+        var result = _parser.Parse(ua, secChUa: secChUa);
+
+        Assert.Equal("Brave 130", result.Browser);
+    }
+
+    [Fact]
+    public void Parse_ClientHints_ChromeFallsBackFromChromium()
+    {
+        var ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+        var secChUa = "\"Google Chrome\";v=\"130\", \"Chromium\";v=\"130\", \"Not?A_Brand\";v=\"99\"";
+
+        var result = _parser.Parse(ua, secChUa: secChUa);
+
+        Assert.Equal("Chrome 130", result.Browser);
+    }
+
+    [Fact]
+    public void Parse_ClientHints_PlatformOverridesUa()
+    {
+        var ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+
+        var result = _parser.Parse(ua, secChUaPlatform: "\"macOS\"");
+
+        Assert.Equal("macOS", result.Os);
+    }
+
+    [Fact]
+    public void Parse_ClientHints_MobileFlag()
+    {
+        var ua = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+
+        var result = _parser.Parse(ua, secChUaMobile: "?1");
+
+        Assert.Equal("mobile", result.DeviceType);
+    }
+
+    [Fact]
+    public void Parse_ClientHints_NonMobileFlag()
+    {
+        var ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+
+        var result = _parser.Parse(ua, secChUaMobile: "?0");
+
+        Assert.Equal("desktop", result.DeviceType);
+    }
 }

@@ -105,4 +105,22 @@ public class WebEventPayload
     /// </summary>
     [JsonPropertyName("dnt")]
     public bool Dnt { get; set; }
+
+    /// <summary>
+    /// Sec-CH-UA client hint header value. Contains browser brand list (e.g., "Brave";v="130", "Chromium";v="130").
+    /// </summary>
+    [JsonPropertyName("sec_ch_ua")]
+    public string? SecChUa { get; set; }
+
+    /// <summary>
+    /// Sec-CH-UA-Mobile client hint header value. "?1" for mobile, "?0" for non-mobile.
+    /// </summary>
+    [JsonPropertyName("sec_ch_ua_mobile")]
+    public string? SecChUaMobile { get; set; }
+
+    /// <summary>
+    /// Sec-CH-UA-Platform client hint header value. Contains the platform (e.g., "Windows", "macOS", "Linux").
+    /// </summary>
+    [JsonPropertyName("sec_ch_ua_platform")]
+    public string? SecChUaPlatform { get; set; }
 }

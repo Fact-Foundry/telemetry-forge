@@ -53,7 +53,7 @@ public static class TelemetryEndpoints
             var hashType = payload.GaValue is not null ? HashType.Ga : HashType.Ip;
             var isFirstVisit = !payload.Dnt && await visitorHashService.IsFirstSeenAsync(visitorHash, hashType, SiteType.Web, siteId, visitorSessionHash);
 
-            var ua = userAgentParser.Parse(payload.UserAgent);
+            var ua = userAgentParser.Parse(payload.UserAgent, payload.SecChUa, payload.SecChUaMobile, payload.SecChUaPlatform);
 
             string? country = payload.Country;
             string? region = payload.Region;
