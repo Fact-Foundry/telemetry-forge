@@ -1,6 +1,10 @@
 # Changelog
 
-## [1.1.0]
+## [1.1.3]
+
+### Features
+
+- Country-hop bot detection — sessions appearing from 3+ distinct countries are flagged as bot, with retroactive flagging of prior events in the session
 
 ### Fixes
 
@@ -12,7 +16,13 @@
 - Added Country column to Event Stream table
 - Dashboard Sites & Apps table — period dropdown (Today, This Week, Last 30 Days, Last 90 Days, Last Year) with Sessions, Bots, and Total columns
 - Added `circuit_open` event type to Event Stream color mapping
-- Added Session Hash to Event Stream expanded detail panel for troubleshooting
+- Added Session Hash column to Event Stream table (truncated) with full hash in expanded detail panel
+- Event Stream now shows 100 events (up from 50) with denser layout
+- Event Stream CSV export button — downloads all visible events as `telemetry-events.csv`
+- Dashboard site names link to Event Stream pre-filtered by that site
+- Dashboard period dropdown made more compact (Dense margin, narrower width)
+
+## [1.1.0]
 
 ### Features
 

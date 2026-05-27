@@ -2,11 +2,11 @@
 
 <PageTitle>Event Stream — TelemetryForge</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Event Stream</MudText>
+<MudText Typo="Typo.h4" Class="mb-2">Event Stream</MudText>
 
-<MudStack Row="true" Spacing="2" Class="mb-4">
+<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-2">
     <MudSelect T="string" @bind-Value="_siteFilter" Label="Site" Variant="Variant.Outlined" Dense="true"
-               Style="max-width: 250px;" Immediate="true">
+               Style="max-width: 200px;" Immediate="true" Margin="Margin.Dense">
         <MudSelectItem T="string" Value="@string.Empty">All Sites</MudSelectItem>
         @foreach (var site in _sites)
         {
@@ -14,7 +14,7 @@
         }
     </MudSelect>
     <MudSelect T="string" @bind-Value="_typeFilter" Label="Type" Variant="Variant.Outlined" Dense="true"
-               Style="max-width: 150px;" Immediate="true">
+               Style="max-width: 120px;" Immediate="true" Margin="Margin.Dense">
         <MudSelectItem T="string" Value="@string.Empty">All Types</MudSelectItem>
         <MudSelectItem T="string" Value="@("Web")">Web</MudSelectItem>
         <MudSelectItem T="string" Value="@("Desktop")">Desktop</MudSelectItem>
@@ -22,8 +22,13 @@
     </MudSelect>
     <MudSwitch T="bool" Value="_hideBots" ValueChanged="OnHideBotsChanged" Label="Hide Bots" Color="Color.Primary" />
     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyFilters"
-               StartIcon="@Icons.Material.Filled.FilterList">
+               StartIcon="@Icons.Material.Filled.FilterList" Size="Size.Small">
         Filter
+    </MudButton>
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ExportCsv"
+               StartIcon="@Icons.Material.Filled.Download" Size="Size.Small">
+        Export
     </MudButton>
 </MudStack>
 
@@ -41,24 +46,24 @@
 }
 else
 {
-    <MudTable Items="_events" Dense="true" Hover="true" Elevation="1">
+    <MudTable Items="_events" Dense="true" Hover="true" Elevation="1" Style="table-layout:fixed;width:100%">
         <HeaderContent>
             <MudTh Style="width:40px"></MudTh>
-            <MudTh>Site</MudTh>
-            <MudTh>Source</MudTh>
-            <MudTh>Event</MudTh>
-            <MudTh>Visitor</MudTh>
+            <MudTh Style="width:120px">Site</MudTh>
+            <MudTh Style="width:70px">Source</MudTh>
+            <MudTh Style="width:100px">Event</MudTh>
+            <MudTh Style="width:90px">Visitor</MudTh>
             <MudTh>Page / Feature</MudTh>
-            <MudTh>Session</MudTh>
-            <MudTh>Country</MudTh>
-            <MudTh>Time</MudTh>
+            <MudTh Style="width:80px">Session</MudTh>
+            <MudTh Style="width:60px">Country</MudTh>
+            <MudTh Style="width:140px">Time</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd>
                 <MudIconButton Icon="@(context.Expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
                                Size="Size.Small" OnClick="() => context.Expanded = !context.Expanded" />
             </MudTd>
-            <MudTd>@context.SiteName</MudTd>
+            <MudTd Style="white-space:nowrap;">@context.SiteName</MudTd>
             <MudTd>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
                          Color="@GetTypeColor(context.SourceType)">@context.SourceType</MudChip>
@@ -89,6 +94,7 @@ else
                 }
             </MudTd>
             <MudTd>
+                <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px;">
                 @if (context.SourceType == "Web")
                 {
                     @(context.EventName ?? context.Page ?? "—")
@@ -97,6 +103,7 @@ else
                 {
                     @($"{context.FeatureCount} features")
                 }
+                </div>
             </MudTd>
             <MudTd Style="font-family:monospace;font-size:0.8rem;">@(context.SessionHash is not null ? context.SessionHash[..Math.Min(8, context.SessionHash.Length)] : "—")</MudTd>
             <MudTd>@(context.Country ?? "—")</MudTd>
@@ -107,8 +114,8 @@ else
             {
                 <MudTr>
                     <td colspan="9">
-                        <MudPaper Class="pa-4 ma-2" Elevation="0" Outlined="true">
-                            <MudGrid Spacing="2">
+                        <MudPaper Class="pa-2 ma-1" Elevation="0" Outlined="true">
+                            <MudGrid Spacing="1">
                                 @if (context.SourceType == "Web")
                                 {
                                     <MudItem xs="12" sm="6" md="4">

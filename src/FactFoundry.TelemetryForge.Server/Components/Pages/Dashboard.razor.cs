@@ -100,6 +100,7 @@ public partial class Dashboard : ComponentBase
 
             return new SiteSummary
             {
+                SiteId = site.Id,
                 Name = site.Name,
                 Type = site.Type,
                 Sessions = sessions,
@@ -162,6 +163,7 @@ public partial class Dashboard : ComponentBase
 
     private class SiteSummary
     {
+        public string SiteId { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public SiteType Type { get; set; }
         public int Sessions { get; set; }

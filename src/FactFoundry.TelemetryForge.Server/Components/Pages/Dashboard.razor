@@ -37,7 +37,7 @@
         <MudText Typo="Typo.h6">Sites & Apps</MudText>
         <MudSpacer />
         <MudSelect T="string" Value="_sitePeriod" ValueChanged="OnPeriodChanged"
-                   Variant="Variant.Outlined" Dense="true" Style="max-width: 180px;" Immediate="true">
+                   Variant="Variant.Outlined" Dense="true" Style="max-width: 160px;" Immediate="true" Margin="Margin.Dense">
             <MudSelectItem T="string" Value="@("Today")">Today</MudSelectItem>
             <MudSelectItem T="string" Value="@("This Week")">This Week</MudSelectItem>
             <MudSelectItem T="string" Value="@("Last 30 Days")">Last 30 Days</MudSelectItem>
@@ -55,7 +55,7 @@
             <MudTh>Last Received</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd>@context.Name</MudTd>
+            <MudTd><MudLink Href="@($"/events?site={context.SiteId}")">@context.Name</MudLink></MudTd>
             <MudTd>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
                          Color="@GetTypeColor(context.Type)">@context.Type</MudChip>

@@ -67,6 +67,30 @@ public static class TelemetryEndpoints
 
             var isBot = ua.DeviceType == "bot" || string.IsNullOrWhiteSpace(payload.Language);
 
+            if (!isBot && !string.IsNullOrWhiteSpace(country))
+            {
+                var priorCountries = await db.WebEvents
+                    .Where(e => e.SessionHash == sessionHash && e.Country != null)
+                    .Select(e => e.Country!)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (!priorCountries.Contains(country))
+                    priorCountries.Add(country);
+
+                if (priorCountries.Count >= 3)
+                {
+                    isBot = true;
+                    var priorEvents = await db.WebEvents
+                        .Where(e => e.SessionHash == sessionHash && !e.IsBot)
+                        .ToListAsync();
+                    foreach (var evt in priorEvents)
+                        evt.IsBot = true;
+                    if (priorEvents.Count > 0)
+                        await db.SaveChangesAsync();
+                }
+            }
+
             var enriched = new EnrichedWebEvent
             {
                 SiteId = siteId,

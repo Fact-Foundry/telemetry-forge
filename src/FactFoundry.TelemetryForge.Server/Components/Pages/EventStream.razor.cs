@@ -1,7 +1,9 @@
+using System.Text;
 using FactFoundry.TelemetryForge.Server.Data;
 using FactFoundry.TelemetryForge.Server.Data.Entities;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace FactFoundry.TelemetryForge.Server.Components.Pages;
@@ -12,6 +14,10 @@ namespace FactFoundry.TelemetryForge.Server.Components.Pages;
 public partial class EventStream : ComponentBase
 {
     [Inject] private TelemetryForgeDbContext Db { get; set; } = default!;
+    [Inject] private IJSRuntime Js { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = "site")]
+    private string? SiteQueryParam { get; set; }
 
     private List<Site> _sites = [];
     private List<EventRow> _events = [];
@@ -21,6 +27,9 @@ public partial class EventStream : ComponentBase
 
     protected override async Task OnInitializedAsync()
     {
+        if (!string.IsNullOrEmpty(SiteQueryParam))
+            _siteFilter = SiteQueryParam;
+
         _sites = await Db.Sites.AsNoTracking().OrderBy(s => s.Name).ToListAsync();
         await LoadEvents();
     }
@@ -37,7 +46,7 @@ public partial class EventStream : ComponentBase
             if (!string.IsNullOrEmpty(_siteFilter))
                 webQuery = webQuery.Where(e => e.SiteId == _siteFilter);
 
-            var webEvents = await webQuery.OrderByDescending(e => e.Timestamp).Take(50).ToListAsync();
+            var webEvents = await webQuery.OrderByDescending(e => e.Timestamp).Take(100).ToListAsync();
             events.AddRange(webEvents.Select(e => new EventRow
             {
                 Id = e.Id,
@@ -70,7 +79,7 @@ public partial class EventStream : ComponentBase
             if (!string.IsNullOrEmpty(_siteFilter))
                 desktopQuery = desktopQuery.Where(s => s.SiteId == _siteFilter);
 
-            var desktopSessions = await desktopQuery.OrderByDescending(s => s.IngestedAt).Take(50).ToListAsync();
+            var desktopSessions = await desktopQuery.OrderByDescending(s => s.IngestedAt).Take(100).ToListAsync();
             events.AddRange(desktopSessions.Select(s => new EventRow
             {
                 Id = s.Id,
@@ -98,7 +107,7 @@ public partial class EventStream : ComponentBase
             if (!string.IsNullOrEmpty(_siteFilter))
                 mobileQuery = mobileQuery.Where(s => s.SiteId == _siteFilter);
 
-            var mobileSessions = await mobileQuery.OrderByDescending(s => s.IngestedAt).Take(50).ToListAsync();
+            var mobileSessions = await mobileQuery.OrderByDescending(s => s.IngestedAt).Take(100).ToListAsync();
             events.AddRange(mobileSessions.Select(s => new EventRow
             {
                 Id = s.Id,
@@ -121,7 +130,7 @@ public partial class EventStream : ComponentBase
             }));
         }
 
-        _events = events.OrderByDescending(e => e.IngestedAt).Take(50).ToList();
+        _events = events.OrderByDescending(e => e.IngestedAt).Take(100).ToList();
     }
 
     private async Task ApplyFilters()
@@ -133,6 +142,41 @@ public partial class EventStream : ComponentBase
     {
         _hideBots = value;
         await LoadEvents();
+    }
+
+    private async Task ExportCsv()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Site,Source,Event,Visitor,Page/Feature,Session,Country,Time,Browser,OS,DeviceType,Language,Referrer,StatusCode");
+
+        foreach (var e in _events)
+        {
+            var eventCol = e.SourceType == "Web" ? e.WebEventType ?? "" : "session";
+            var visitor = e.IsBot ? "Bot" : e.IsFirstSeen ? "New" : "Returning";
+            var pageFeature = e.SourceType == "Web"
+                ? e.EventName ?? e.Page ?? ""
+                : $"{e.FeatureCount} features";
+            var session = e.SessionHash ?? "";
+
+            sb.AppendLine(string.Join(",",
+                Csv(e.SiteName), Csv(e.SourceType), Csv(eventCol), Csv(visitor),
+                Csv(pageFeature), Csv(session), Csv(e.Country ?? ""),
+                Csv(e.Timestamp.ToString("o")), Csv(e.Browser ?? ""), Csv(e.Os ?? ""),
+                Csv(e.DeviceType ?? ""), Csv(e.Language ?? ""), Csv(e.Referrer ?? ""),
+                e.StatusCode > 0 ? e.StatusCode.ToString() : ""));
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        await Js.InvokeVoidAsync("eval",
+            $"(() => {{ const a = document.createElement('a'); a.href = 'data:text/csv;base64,{base64}'; a.download = 'telemetry-events.csv'; a.click(); }})()");
+    }
+
+    private static string Csv(string value)
+    {
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        return value;
     }
 
     private static Color GetTypeColor(string type) => type switch
