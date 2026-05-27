@@ -1,0 +1,223 @@
+@page "/settings/api"
+@using FactFoundry.TelemetryForge.Server.Data
+@using FactFoundry.TelemetryForge.Server.Data.Entities
+@using FactFoundry.TelemetryForge.Server.Services
+@using Microsoft.EntityFrameworkCore
+@inject DataApiKeyService DataApiKeyService
+@inject AuthService AuthService
+@inject TelemetryForgeDbContext Db
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>API — TelemetryForge</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Data API</MudText>
+
+<MudStack Spacing="4">
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Data API keys grant read-only access to telemetry data for specific sites.
+            Use these keys with Postman, Microsoft Fabric, or any HTTP client to query events and sessions.
+        </MudText>
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Endpoints</MudText>
+        <MudStack Spacing="1" Class="mb-4">
+            <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.85rem;">
+                GET /api/data/web-events?siteId=&amp;from=&amp;to=&amp;isBot=&amp;eventType=&amp;page=&amp;pageSize=
+            </MudText>
+            <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.85rem;">
+                GET /api/data/desktop-sessions?siteId=&amp;from=&amp;to=&amp;page=&amp;pageSize=
+            </MudText>
+            <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.85rem;">
+                GET /api/data/mobile-sessions?siteId=&amp;from=&amp;to=&amp;page=&amp;pageSize=
+            </MudText>
+        </MudStack>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Include your key in the <code>X-TelemetryForge-DataKey</code> header.
+        </MudText>
+    </MudPaper>
+
+    @* ── API Timezone ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Response Timezone</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Timezone used for date/time values in API responses. Defaults to UTC.
+        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudAutocomplete T="string" @bind-Value="_apiTimezone" Label="Timezone" Variant="Variant.Outlined"
+                             SearchFunc="SearchTimezones" ToStringFunc="FormatTimezoneLabel"
+                             Immediate="true" Style="max-width:500px"
+                             MaxItems="20" CoerceText="true" CoerceValue="true" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveApiTimezone"
+                       Disabled="@(string.IsNullOrWhiteSpace(_apiTimezone))">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.h6">API Keys</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddKeyDialog">
+                Add Key
+            </MudButton>
+        </MudStack>
+
+        @if (!string.IsNullOrEmpty(_newlyGeneratedKey))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-3" CloseIconClicked="() => _newlyGeneratedKey = string.Empty"
+                      ShowCloseIcon="true">
+                <MudText Typo="Typo.body2"><strong>Copy your API key now — it won't be shown again:</strong></MudText>
+                <MudText Typo="Typo.body2" Style="font-family:monospace;word-break:break-all;">@_newlyGeneratedKey</MudText>
+            </MudAlert>
+        }
+
+        @if (_keys.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Default">No data API keys created yet.</MudText>
+        }
+        else
+        {
+            <MudTable Items="_keys" Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Authorized Sites</MudTh>
+                    <MudTh>Created</MudTh>
+                    <MudTh Style="width:48px"></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Name</MudTd>
+                    <MudTd>
+                        @foreach (var siteId in context.SiteIds)
+                        {
+                            var siteName = _siteNames.GetValueOrDefault(siteId, siteId);
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                     Color="Color.Default" Class="mr-1">@siteName</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
+                    <MudTd>
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small"
+                                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                            <MudMenuItem Icon="@Icons.Material.Filled.Refresh"
+                                         OnClick="() => RegenerateKey(context)">
+                                Regenerate Key
+                            </MudMenuItem>
+                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                                         OnClick="() => DeleteKey(context)">
+                                Delete
+                            </MudMenuItem>
+                        </MudMenu>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+</MudStack>
+
+@code {
+    private List<DataApiKey> _keys = [];
+    private List<Site> _sites = [];
+    private Dictionary<string, string> _siteNames = new();
+    private string _newlyGeneratedKey = string.Empty;
+    private string _apiTimezone = "UTC";
+
+    private static readonly List<(string Id, string Label)> AllTimezones = TimeZoneInfo.GetSystemTimeZones()
+        .OrderBy(tz => tz.BaseUtcOffset)
+        .Select(tz => (tz.Id, $"(UTC{(tz.BaseUtcOffset < TimeSpan.Zero ? "-" : "+")}{tz.BaseUtcOffset:hh\\:mm}) {tz.Id}"))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sites = await Db.Sites.AsNoTracking().OrderBy(s => s.Name).ToListAsync();
+        _siteNames = _sites.ToDictionary(s => s.Id, s => s.Name);
+        _keys = await DataApiKeyService.GetAllKeysAsync();
+        _apiTimezone = await AuthService.GetServerSettingAsync("Api:Timezone") ?? "UTC";
+    }
+
+    private async Task SaveApiTimezone()
+    {
+        try
+        {
+            TimeZoneInfo.FindSystemTimeZoneById(_apiTimezone);
+            await AuthService.SaveServerSettingAsync("Api:Timezone", _apiTimezone);
+            Snackbar.Add($"API timezone set to {_apiTimezone}.", Severity.Success);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            Snackbar.Add("Invalid timezone ID.", Severity.Error);
+        }
+    }
+
+    private Task<IEnumerable<string>> SearchTimezones(string? value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(AllTimezones.Select(tz => tz.Id));
+
+        var results = AllTimezones
+            .Where(tz => tz.Label.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .Select(tz => tz.Id);
+        return Task.FromResult(results);
+    }
+
+    private static string FormatTimezoneLabel(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return string.Empty;
+        var match = AllTimezones.FirstOrDefault(tz => tz.Id == id);
+        return match.Label ?? id;
+    }
+
+    private async Task OpenAddKeyDialog()
+    {
+        var parameters = new DialogParameters<Dialogs.AddDataApiKeyDialog>
+        {
+            { x => x.Sites, _sites }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<Dialogs.AddDataApiKeyDialog>("Create Data API Key", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is Dialogs.AddDataApiKeyDialog.DataApiKeyResult data)
+        {
+            var (rawKey, _) = await DataApiKeyService.CreateKeyAsync(data.Name, data.SiteIds);
+            _newlyGeneratedKey = rawKey;
+            _keys = await DataApiKeyService.GetAllKeysAsync();
+            Snackbar.Add($"API key \"{data.Name}\" created.", Severity.Success);
+        }
+    }
+
+    private async Task RegenerateKey(DataApiKey key)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Regenerate Key",
+            $"This will invalidate the current key for \"{key.Name}\". Any integrations using the old key will stop working.",
+            "Regenerate", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        var rawKey = await DataApiKeyService.RegenerateKeyAsync(key.Id);
+        if (rawKey is not null)
+        {
+            _newlyGeneratedKey = rawKey;
+            _keys = await DataApiKeyService.GetAllKeysAsync();
+            Snackbar.Add($"Key regenerated for \"{key.Name}\".", Severity.Success);
+        }
+    }
+
+    private async Task DeleteKey(DataApiKey key)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete API Key",
+            $"Are you sure you want to delete \"{key.Name}\"? Any integrations using this key will stop working.",
+            "Delete", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        await DataApiKeyService.DeleteKeyAsync(key.Id);
+        _keys = await DataApiKeyService.GetAllKeysAsync();
+        _newlyGeneratedKey = string.Empty;
+        Snackbar.Add($"\"{key.Name}\" deleted.", Severity.Info);
+    }
+}

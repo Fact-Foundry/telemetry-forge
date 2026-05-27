@@ -1,6 +1,7 @@
 using System.Text;
 using FactFoundry.TelemetryForge.Server.Data;
 using FactFoundry.TelemetryForge.Server.Data.Entities;
+using FactFoundry.TelemetryForge.Server.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
@@ -15,6 +16,7 @@ public partial class EventStream : ComponentBase
 {
     [Inject] private TelemetryForgeDbContext Db { get; set; } = default!;
     [Inject] private IJSRuntime Js { get; set; } = default!;
+    [Inject] private AuthService AuthService { get; set; } = default!;
 
     [SupplyParameterFromQuery(Name = "site")]
     private string? SiteQueryParam { get; set; }
@@ -24,11 +26,19 @@ public partial class EventStream : ComponentBase
     private string _siteFilter = string.Empty;
     private string _typeFilter = string.Empty;
     private bool _hideBots = true;
+    private TimeZoneInfo _tz = TimeZoneInfo.Utc;
 
     protected override async Task OnInitializedAsync()
     {
         if (!string.IsNullOrEmpty(SiteQueryParam))
             _siteFilter = SiteQueryParam;
+
+        var tzId = await AuthService.GetServerSettingAsync("Display:Timezone");
+        if (!string.IsNullOrEmpty(tzId))
+        {
+            try { _tz = TimeZoneInfo.FindSystemTimeZoneById(tzId); }
+            catch (TimeZoneNotFoundException) { }
+        }
 
         _sites = await Db.Sites.AsNoTracking().OrderBy(s => s.Name).ToListAsync();
         await LoadEvents();
@@ -196,6 +206,9 @@ public partial class EventStream : ComponentBase
         "circuit_close" => Color.Default,
         _ => Color.Default
     };
+
+    private string FormatTime(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(utc, _tz).ToString("M/d/yyyy H:mm");
 
     private static string FormatDuration(int ms) => ms switch
     {

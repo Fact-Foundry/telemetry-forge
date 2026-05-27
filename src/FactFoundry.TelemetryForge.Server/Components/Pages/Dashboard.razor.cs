@@ -1,5 +1,6 @@
 using FactFoundry.TelemetryForge.Server.Data;
 using FactFoundry.TelemetryForge.Server.Data.Entities;
+using FactFoundry.TelemetryForge.Server.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
@@ -12,7 +13,9 @@ namespace FactFoundry.TelemetryForge.Server.Components.Pages;
 public partial class Dashboard : ComponentBase
 {
     [Inject] private TelemetryForgeDbContext Db { get; set; } = default!;
+    [Inject] private AuthService AuthService { get; set; } = default!;
 
+    private TimeZoneInfo _tz = TimeZoneInfo.Utc;
     private int _activeNow;
     private int _today;
     private int _thisWeek;
@@ -29,6 +32,13 @@ public partial class Dashboard : ComponentBase
 
     protected override async Task OnInitializedAsync()
     {
+        var tzId = await AuthService.GetServerSettingAsync("Display:Timezone");
+        if (!string.IsNullOrEmpty(tzId))
+        {
+            try { _tz = TimeZoneInfo.FindSystemTimeZoneById(tzId); }
+            catch (TimeZoneNotFoundException) { }
+        }
+
         var now = DateTime.UtcNow;
         var todayStart = now.Date;
         var weekStart = todayStart.AddDays(-(int)todayStart.DayOfWeek);
@@ -146,8 +156,11 @@ public partial class Dashboard : ComponentBase
         _ => $"{ms / 60000.0:F1}m"
     };
 
-    private static string FormatLastReceived(DateTime? dt) =>
-        dt.HasValue ? dt.Value.ToString("g") : "Never";
+    private string FormatTime(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(utc, _tz).ToString("M/d/yyyy H:mm");
+
+    private string FormatLastReceived(DateTime? dt) =>
+        dt.HasValue ? FormatTime(dt.Value) : "Never";
 
     private class SiteSessionData
     {

@@ -126,6 +126,7 @@ builder.Services.AddRateLimiter(options =>
 
 // Services
 builder.Services.AddScoped<ApiKeyService>();
+builder.Services.AddScoped<DataApiKeyService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<VisitorHashService>();
 builder.Services.AddSingleton<UserAgentParserService>();
@@ -175,6 +176,7 @@ app.UseRateLimiter();
 app.MapAuthEndpoints();
 app.MapTelemetryEndpoints();
 app.MapSiteEndpoints();
+app.MapDataEndpoints();
 
 // Blazor
 app.MapStaticAssets();

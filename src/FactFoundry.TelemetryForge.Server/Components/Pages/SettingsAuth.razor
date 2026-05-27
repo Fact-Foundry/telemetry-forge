@@ -1,0 +1,195 @@
+@page "/settings/auth"
+@using FactFoundry.TelemetryForge.Server.Data.Entities
+@using FactFoundry.TelemetryForge.Server.Services
+@inject AuthService AuthService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Authentication — TelemetryForge</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Authentication</MudText>
+
+<MudStack Spacing="4">
+    @* ── OIDC / SSO ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Single Sign-On (OIDC)</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Connect an OpenID Connect provider (e.g., Microsoft Entra ID) for admin sign-in.
+            OIDC users must be pre-authorized in the Admin Accounts table below. A server restart
+            is required after changing these settings.
+        </MudText>
+        <MudStack Spacing="3">
+            <MudSwitch T="bool" @bind-Value="_oidcEnabled" Label="Enable OIDC" Color="Color.Primary" />
+            @if (_oidcEnabled)
+            {
+                <MudTextField @bind-Value="_oidcAuthority" Label="Authority URL" Variant="Variant.Outlined"
+                              Immediate="true" Placeholder="https://login.microsoftonline.com/{tenant-id}/v2.0"
+                              Style="max-width:600px" />
+                <MudTextField @bind-Value="_oidcClientId" Label="Client ID" Variant="Variant.Outlined"
+                              Immediate="true" Style="max-width:400px" />
+                <MudTextField @bind-Value="_oidcClientSecret" Label="Client Secret" Variant="Variant.Outlined"
+                              InputType="InputType.Password" Immediate="true" Style="max-width:400px" />
+                <MudTextField @bind-Value="_oidcDisplayName" Label="Button Label" Variant="Variant.Outlined"
+                              Immediate="true" Placeholder="e.g. Sign in with Microsoft"
+                              Style="max-width:300px" />
+            }
+            <div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveOidcSettings">
+                    Save
+                </MudButton>
+            </div>
+        </MudStack>
+    </MudPaper>
+
+    @* ── Admin Accounts ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Admin Accounts</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Users who can access the TelemetryForge admin UI.
+        </MudText>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd"
+                   Class="mb-3" OnClick="OpenAddAdminDialog">
+            Add Admin
+        </MudButton>
+
+        <MudTable Items="_admins" Dense="true" Hover="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>Email</MudTh>
+                <MudTh>Name</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Style="width:48px"></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Email</MudTd>
+                <MudTd>@context.DisplayName</MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                             Color="@(context.IsOidcUser ? Color.Info : Color.Default)">
+                        @(context.IsOidcUser ? "OIDC" : "Local")
+                    </MudChip>
+                </MudTd>
+                <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd")</MudTd>
+                <MudTd>
+                    @if (context.LockedUntil.HasValue && context.LockedUntil > DateTime.UtcNow)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small"
+                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        @if (!context.IsOidcUser)
+                        {
+                            <MudMenuItem Icon="@Icons.Material.Filled.LockReset"
+                                         OnClick="() => ResetPassword(context)">
+                                Reset Password
+                            </MudMenuItem>
+                        }
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                                     Disabled="@(_admins.Count <= 1)"
+                                     OnClick="() => DeleteAdmin(context)">
+                            Delete
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+</MudStack>
+
+@code {
+    private bool _oidcEnabled;
+    private string _oidcAuthority = string.Empty;
+    private string _oidcClientId = string.Empty;
+    private string _oidcClientSecret = string.Empty;
+    private string _oidcDisplayName = string.Empty;
+    private List<AdminUser> _admins = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _oidcEnabled = string.Equals(
+            await AuthService.GetServerSettingAsync("Oidc:Enabled"), "true", StringComparison.OrdinalIgnoreCase);
+        _oidcAuthority = await AuthService.GetServerSettingAsync("Oidc:Authority") ?? string.Empty;
+        _oidcClientId = await AuthService.GetServerSettingAsync("Oidc:ClientId") ?? string.Empty;
+        _oidcClientSecret = await AuthService.GetServerSettingAsync("Oidc:ClientSecret") ?? string.Empty;
+        _oidcDisplayName = await AuthService.GetServerSettingAsync("Oidc:DisplayName") ?? string.Empty;
+        _admins = await AuthService.GetAdminUsersAsync();
+    }
+
+    private async Task SaveOidcSettings()
+    {
+        await AuthService.SaveServerSettingAsync("Oidc:Enabled", _oidcEnabled ? "true" : "false");
+        await AuthService.SaveServerSettingAsync("Oidc:Authority", _oidcAuthority.Trim());
+        await AuthService.SaveServerSettingAsync("Oidc:ClientId", _oidcClientId.Trim());
+        if (!string.IsNullOrWhiteSpace(_oidcClientSecret))
+            await AuthService.SaveServerSettingAsync("Oidc:ClientSecret", _oidcClientSecret.Trim());
+        await AuthService.SaveServerSettingAsync("Oidc:DisplayName",
+            string.IsNullOrWhiteSpace(_oidcDisplayName) ? "SSO" : _oidcDisplayName.Trim());
+        Snackbar.Add("OIDC settings saved. Restart the server to apply.", Severity.Success);
+    }
+
+    private async Task OpenAddAdminDialog()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<Dialogs.AddAdminDialog>("Add Admin Account", options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is Dialogs.AddAdminDialog.AdminResult data)
+        {
+            try
+            {
+                if (data.IsOidc)
+                    await AuthService.CreateOidcAdminAsync(data.Email, data.DisplayName);
+                else
+                    await AuthService.CreateAdminAsync(data.Email, data.DisplayName, data.Password);
+
+                _admins = await AuthService.GetAdminUsersAsync();
+                Snackbar.Add($"Admin \"{data.Email}\" added.", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to add admin: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ResetPassword(AdminUser admin)
+    {
+        var parameters = new DialogParameters<Dialogs.ResetPasswordDialog>
+        {
+            { x => x.Email, admin.Email }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<Dialogs.ResetPasswordDialog>("Reset Password", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is string newPassword)
+        {
+            await AuthService.ResetPasswordAsync(admin.Id, newPassword);
+            _admins = await AuthService.GetAdminUsersAsync();
+            Snackbar.Add($"Password reset for {admin.Email}.", Severity.Success);
+        }
+    }
+
+    private async Task DeleteAdmin(AdminUser admin)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete Admin",
+            $"Are you sure you want to delete \"{admin.Email}\"? This action cannot be undone.",
+            "Delete", cancelText: "Cancel");
+
+        if (confirmed != true)
+            return;
+
+        await AuthService.DeleteAdminAsync(admin.Id);
+        _admins = await AuthService.GetAdminUsersAsync();
+        Snackbar.Add($"{admin.Email} removed.", Severity.Info);
+    }
+}

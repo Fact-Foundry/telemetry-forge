@@ -2,6 +2,12 @@
 
 <PageTitle>Event Stream — TelemetryForge</PageTitle>
 
+<style>
+    .event-stream-table td, .event-stream-table th {
+        padding: 4px 8px !important;
+    }
+</style>
+
 <MudText Typo="Typo.h4" Class="mb-2">Event Stream</MudText>
 
 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-2">
@@ -46,7 +52,7 @@
 }
 else
 {
-    <MudTable Items="_events" Dense="true" Hover="true" Elevation="1" Style="table-layout:fixed;width:100%">
+    <MudTable Items="_events" Dense="true" Hover="true" Elevation="1" Class="event-stream-table" Style="table-layout:fixed;width:100%">
         <HeaderContent>
             <MudTh Style="width:40px"></MudTh>
             <MudTh Style="width:120px">Site</MudTh>
@@ -56,7 +62,7 @@ else
             <MudTh>Page / Feature</MudTh>
             <MudTh Style="width:80px">Session</MudTh>
             <MudTh Style="width:60px">Country</MudTh>
-            <MudTh Style="width:140px">Time</MudTh>
+            <MudTh Style="width:130px">Time</MudTh>
         </HeaderContent>
         <RowTemplate>
             <MudTd>
@@ -107,14 +113,14 @@ else
             </MudTd>
             <MudTd Style="font-family:monospace;font-size:0.8rem;">@(context.SessionHash is not null ? context.SessionHash[..Math.Min(8, context.SessionHash.Length)] : "—")</MudTd>
             <MudTd>@(context.Country ?? "—")</MudTd>
-            <MudTd>@context.Timestamp.ToString("g")</MudTd>
+            <MudTd Style="white-space:nowrap;">@FormatTime(context.Timestamp)</MudTd>
         </RowTemplate>
         <ChildRowContent>
             @if (context.Expanded)
             {
                 <MudTr>
                     <td colspan="9">
-                        <MudPaper Class="pa-2 ma-1" Elevation="0" Outlined="true">
+                        <MudPaper Class="pa-2 ma-1" Elevation="0" Outlined="true" Style="word-break:break-all;">
                             <MudGrid Spacing="1">
                                 @if (context.SourceType == "Web")
                                 {
@@ -173,11 +179,11 @@ else
                                 {
                                     <MudItem xs="12" sm="6" md="4">
                                         <MudText Typo="Typo.caption">Session Start</MudText>
-                                        <MudText Typo="Typo.body2">@context.Timestamp.ToString("G")</MudText>
+                                        <MudText Typo="Typo.body2">@FormatTime(context.Timestamp)</MudText>
                                     </MudItem>
                                     <MudItem xs="12" sm="6" md="4">
                                         <MudText Typo="Typo.caption">Session End</MudText>
-                                        <MudText Typo="Typo.body2">@(context.SessionEnd?.ToString("G") ?? "—")</MudText>
+                                        <MudText Typo="Typo.body2">@(context.SessionEnd.HasValue ? FormatTime(context.SessionEnd.Value) : "—")</MudText>
                                     </MudItem>
                                     <MudItem xs="12" sm="6" md="4">
                                         <MudText Typo="Typo.caption">Duration</MudText>

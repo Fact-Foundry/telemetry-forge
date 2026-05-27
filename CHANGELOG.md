@@ -5,6 +5,11 @@
 ### Features
 
 - Country-hop bot detection — sessions appearing from 3+ distinct countries are flagged as bot, with retroactive flagging of prior events in the session
+- Data API — read-only REST endpoints (`/api/data/web-events`, `/api/data/desktop-sessions`, `/api/data/mobile-sessions`) with pagination, date range, site, bot, and event type filters
+- Data API keys — site-scoped API keys (`tfrg_data_` prefix) for granting read access to specific site groups (e.g. separate keys for production vs sandbox)
+- DataApiKey entity with BCrypt-hashed keys and JSON site ID list
+- Display timezone setting (General) — configures timezone for all dates in the admin UI
+- API response timezone setting (API) — configures timezone for date values in Data API responses, independent of the display timezone
 
 ### Fixes
 
@@ -21,6 +26,12 @@
 - Event Stream CSV export button — downloads all visible events as `telemetry-events.csv`
 - Dashboard site names link to Event Stream pre-filtered by that site
 - Dashboard period dropdown made more compact (Dense margin, narrower width)
+- Settings restructured into sub-pages — General (server, GeoIP, session, retention), Authentication (OIDC, admin accounts), API (data key management)
+- Settings nav item is now an expandable group with sub-page links
+- Event Stream table uses fixed column widths with ellipsis truncation for long page paths
+- Event Stream detail panel wraps long URLs instead of overflowing
+- Event Stream time column uses compact date format (`M/d/yyyy H:mm`)
+- Event Stream table cell padding reduced for denser rows
 
 ## [1.1.0]
 

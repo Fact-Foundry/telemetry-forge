@@ -56,6 +56,11 @@ public class TelemetryForgeDbContext : DbContext
     /// </summary>
     public DbSet<MobileSession> MobileSessions => Set<MobileSession>();
 
+    /// <summary>
+    /// API keys that grant read access to telemetry data for scoped site sets.
+    /// </summary>
+    public DbSet<DataApiKey> DataApiKeys => Set<DataApiKey>();
+
     public TelemetryForgeDbContext(DbContextOptions<TelemetryForgeDbContext> options)
         : base(options)
     {
@@ -140,6 +145,14 @@ public class TelemetryForgeDbContext : DbContext
             entity.HasIndex(e => e.SessionId);
             entity.Property(e => e.FeaturePath).HasJsonConversion();
             entity.Property(e => e.ErrorEvents).HasJsonConversion();
+        });
+
+        modelBuilder.Entity<DataApiKey>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ApiKeyHash).IsRequired();
+            entity.Property(e => e.SiteIds).HasJsonConversion();
         });
     }
 }

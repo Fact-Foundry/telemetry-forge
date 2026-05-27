@@ -105,7 +105,7 @@ else
             <MudTd>@(context.Page ?? "—")</MudTd>
             <MudTd>@(context.Country ?? "—")</MudTd>
             <MudTd>@context.Platform</MudTd>
-            <MudTd>@context.SessionStart.ToString("g")</MudTd>
+            <MudTd>@FormatTime(context.SessionStart)</MudTd>
         </RowTemplate>
     </MudTable>
 }
