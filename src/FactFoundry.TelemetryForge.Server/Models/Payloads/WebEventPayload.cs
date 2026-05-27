@@ -50,7 +50,7 @@ public class WebEventPayload
     public int StatusCode { get; set; }
 
     /// <summary>
-    /// Type of event: page_view, custom, link_click, or circuit_close.
+    /// Type of event: page_view, custom, link_click, circuit_open, or circuit_close.
     /// </summary>
     [JsonPropertyName("event_type")]
     public string EventType { get; set; } = "page_view";

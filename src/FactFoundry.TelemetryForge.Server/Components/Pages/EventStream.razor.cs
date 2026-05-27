@@ -60,6 +60,7 @@ public partial class EventStream : ComponentBase
                 Browser = e.Browser,
                 Os = e.Os,
                 DeviceType = e.DeviceType,
+                SessionHash = e.SessionHash,
             }));
         }
 
@@ -147,6 +148,7 @@ public partial class EventStream : ComponentBase
         "page_view" => Color.Info,
         "custom" => Color.Tertiary,
         "link_click" => Color.Warning,
+        "circuit_open" => Color.Default,
         "circuit_close" => Color.Default,
         _ => Color.Default
     };
@@ -176,6 +178,7 @@ public partial class EventStream : ComponentBase
         public bool IsBot { get; set; }
 
         // Web event fields
+        public string? SessionHash { get; set; }
         public string? Page { get; set; }
         public int StatusCode { get; set; }
         public string? EventName { get; set; }

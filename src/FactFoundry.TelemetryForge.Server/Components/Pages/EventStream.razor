@@ -49,6 +49,8 @@ else
             <MudTh>Event</MudTh>
             <MudTh>Visitor</MudTh>
             <MudTh>Page / Feature</MudTh>
+            <MudTh>Session</MudTh>
+            <MudTh>Country</MudTh>
             <MudTh>Time</MudTh>
         </HeaderContent>
         <RowTemplate>
@@ -96,17 +98,23 @@ else
                     @($"{context.FeatureCount} features")
                 }
             </MudTd>
+            <MudTd Style="font-family:monospace;font-size:0.8rem;">@(context.SessionHash is not null ? context.SessionHash[..Math.Min(8, context.SessionHash.Length)] : "—")</MudTd>
+            <MudTd>@(context.Country ?? "—")</MudTd>
             <MudTd>@context.Timestamp.ToString("g")</MudTd>
         </RowTemplate>
         <ChildRowContent>
             @if (context.Expanded)
             {
                 <MudTr>
-                    <td colspan="7">
+                    <td colspan="9">
                         <MudPaper Class="pa-4 ma-2" Elevation="0" Outlined="true">
                             <MudGrid Spacing="2">
                                 @if (context.SourceType == "Web")
                                 {
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Session</MudText>
+                                        <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.75rem;">@(context.SessionHash ?? "—")</MudText>
+                                    </MudItem>
                                     <MudItem xs="12" sm="6" md="4">
                                         <MudText Typo="Typo.caption">Page</MudText>
                                         <MudText Typo="Typo.body2">@(context.Page ?? "—")</MudText>

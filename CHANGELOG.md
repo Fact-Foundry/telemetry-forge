@@ -7,6 +7,13 @@
 - Web timestamp field changed from DateTime to DateTimeOffset — fixes 400 rejection of SDK payloads with fractional-second ISO 8601 timestamps
 - Fixed page_path field name mismatch — server expected "page" but SDK sends "page_path", causing empty Page on all web events
 
+### UI Improvements
+
+- Added Country column to Event Stream table
+- Dashboard Sites & Apps table — period dropdown (Today, This Week, Last 30 Days, Last 90 Days, Last Year) with Sessions, Bots, and Total columns
+- Added `circuit_open` event type to Event Stream color mapping
+- Added Session Hash to Event Stream expanded detail panel for troubleshooting
+
 ### Features
 
 - Initial project scaffold with Blazor Server + MudBlazor admin UI
