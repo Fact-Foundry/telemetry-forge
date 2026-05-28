@@ -29,6 +29,7 @@ public partial class Security : ComponentBase
     private int _botsThisMonth;
     private int _botsTotal;
     private Dictionary<string, int> _reasonCounts = new();
+    private PieData _botBrowserPie = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -51,9 +52,16 @@ public partial class Security : ComponentBase
         var weekStart = TimeZoneInfo.ConvertTimeToUtc(nowLocal.Date.AddDays(-(int)nowLocal.DayOfWeek), _tz);
         var monthStart = TimeZoneInfo.ConvertTimeToUtc(new DateTime(nowLocal.Year, nowLocal.Month, 1), _tz);
 
-        var botEvents = await Db.WebEvents.AsNoTracking()
-            .Where(e => e.IsBot)
-            .Select(e => new { e.IngestedAt, e.BotReason })
+        var query = Db.WebEvents.AsNoTracking().Where(e => e.IsBot);
+
+        if (!string.IsNullOrEmpty(_siteFilter))
+            query = query.Where(e => e.SiteId == _siteFilter);
+
+        if (!string.IsNullOrEmpty(_reasonFilter))
+            query = query.Where(e => e.BotReason == _reasonFilter);
+
+        var botEvents = await query
+            .Select(e => new { e.IngestedAt, e.BotReason, e.Browser, e.SessionHash })
             .ToListAsync();
 
         _botsTotal = botEvents.Count;
@@ -66,6 +74,24 @@ public partial class Security : ComponentBase
             .ToDictionary(g => g.Key, g => g.Count())
             .OrderByDescending(kvp => kvp.Value)
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        var botBrowserCounts = botEvents
+            .GroupBy(e => new { Browser = e.Browser ?? "Unknown", e.SessionHash })
+            .Select(g => g.Key)
+            .GroupBy(x => x.Browser)
+            .Select(g => new { Browser = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(10)
+            .ToList();
+
+        _botBrowserPie = new PieData
+        {
+            Series = [new ChartSeries<double>
+            {
+                Data = botBrowserCounts.Select(x => (double)x.Count).ToArray()
+            }],
+            Labels = botBrowserCounts.Select(x => $"{x.Browser} ({x.Count})").ToArray()
+        };
     }
 
     private async Task LoadEvents()
@@ -104,6 +130,7 @@ public partial class Security : ComponentBase
 
     private async Task ApplyFilters()
     {
+        await LoadStats();
         await LoadEvents();
     }
 
@@ -182,5 +209,11 @@ public partial class Security : ComponentBase
         public int StatusCode { get; set; }
         public DateTime Timestamp { get; set; }
         public bool Expanded { get; set; }
+    }
+
+    private class PieData
+    {
+        public List<ChartSeries<double>> Series { get; set; } = [];
+        public string[] Labels { get; set; } = [];
     }
 }

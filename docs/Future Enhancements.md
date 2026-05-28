@@ -30,6 +30,10 @@ The server now supports session upsert via `session_id` + `sequence` fields, all
 - **Keep end-of-session flush** — final flush on dispose with sequence=N and full duration
 - **Configuration**: add `HeartbeatIntervalMinutes` to `DesktopTelemetryOptions` (configurable, disabled by default for backward compatibility)
 
+## Security Page
+
+- **Disable bot scan button** — allow admins to toggle the "Scan for Bots" button on/off from the Security page (e.g., a setting to disable retroactive scanning when not needed)
+
 ### Mobile Package — Heartbeat Support
 
 Same heartbeat pattern as Desktop when eventually implemented:

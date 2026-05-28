@@ -135,6 +135,10 @@ public class BotDetectionService
         if (first.DeviceType == "bot")
             return "user-agent";
 
+        var browser = first.Browser?.ToLowerInvariant() ?? "";
+        if (browser.Contains("curl") || browser.Contains("wget") || browser.Contains("httpie"))
+            return "user-agent";
+
         if (string.IsNullOrWhiteSpace(first.Language))
             return "no-language";
 

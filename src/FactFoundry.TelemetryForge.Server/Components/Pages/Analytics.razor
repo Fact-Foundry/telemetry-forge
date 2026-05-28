@@ -41,8 +41,8 @@ else
 {
     <MudStack Spacing="4">
         <MudGrid>
-            <MudItem xs="12" md="4">
-                <MudPaper Class="pa-4" Elevation="1">
+            <MudItem xs="12" md="4" Style="display:flex">
+                <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
                     <MudText Typo="Typo.h6" Class="mb-2">Sessions by Browser</MudText>
                     @if (_browserPie.Labels.Length > 0)
                     {
@@ -56,8 +56,8 @@ else
                     }
                 </MudPaper>
             </MudItem>
-            <MudItem xs="12" md="4">
-                <MudPaper Class="pa-4" Elevation="1">
+            <MudItem xs="12" md="4" Style="display:flex">
+                <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
                     <MudText Typo="Typo.h6" Class="mb-2">Sessions by OS</MudText>
                     @if (_osPie.Labels.Length > 0)
                     {
@@ -71,8 +71,8 @@ else
                     }
                 </MudPaper>
             </MudItem>
-            <MudItem xs="12" md="4">
-                <MudPaper Class="pa-4" Elevation="1">
+            <MudItem xs="12" md="4" Style="display:flex">
+                <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
                     <MudText Typo="Typo.h6" Class="mb-2">Sessions by Device Type</MudText>
                     @if (_devicePie.Labels.Length > 0)
                     {

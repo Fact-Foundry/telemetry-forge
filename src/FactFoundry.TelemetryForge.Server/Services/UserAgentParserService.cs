@@ -158,7 +158,8 @@ public partial class UserAgentParserService
 
         var ua = userAgent.ToLowerInvariant();
         return ua.Contains("bot") || ua.Contains("crawl") || ua.Contains("spider")
-            || ua.Contains("scrape") || ua.Contains("headless");
+            || ua.Contains("scrape") || ua.Contains("headless")
+            || ua.Contains("curl/") || ua.Contains("wget/") || ua.Contains("httpie/");
     }
 }
 
