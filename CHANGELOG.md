@@ -5,6 +5,9 @@
 ### Features
 
 - Country-hop bot detection — sessions appearing from 3+ distinct countries are flagged as bot, with retroactive flagging of prior events in the session
+- Page velocity bot detection — sessions with 5+ page_view events in 60 seconds are flagged as bot with retroactive flagging
+- Path scan bot detection — sessions requesting the same filename from 5+ different directory paths are flagged as bot (catches WordPress vulnerability scanners)
+- BotReason field on WebEvent — stores why an event was flagged (user-agent, no-language, country-hop, page-velocity, path-scan)
 - Data API — read-only REST endpoints (`/api/data/web-events`, `/api/data/desktop-sessions`, `/api/data/mobile-sessions`) with pagination, date range, site, bot, and event type filters
 - Data API keys — site-scoped API keys (`tfrg_data_` prefix) for granting read access to specific site groups (e.g. separate keys for production vs sandbox)
 - DataApiKey entity with BCrypt-hashed keys and JSON site ID list

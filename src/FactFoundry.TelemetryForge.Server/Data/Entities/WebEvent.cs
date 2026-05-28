@@ -114,4 +114,9 @@ public class WebEvent
     /// Whether this event has been materialized into a WebSession.
     /// </summary>
     public bool Materialized { get; set; }
+
+    /// <summary>
+    /// Why this event was flagged as bot (e.g. "user-agent", "no-language", "country-hop", "page-velocity", "path-scan").
+    /// </summary>
+    public string? BotReason { get; set; }
 }

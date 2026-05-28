@@ -121,6 +121,7 @@ public class DatabaseEventPublisher : IEventPublisher
         Referrer = e.Referrer,
         Language = e.Language,
         IsBot = e.IsBot,
+        BotReason = e.BotReason,
         Timestamp = e.Timestamp,
         IngestedAt = DateTime.UtcNow
     };

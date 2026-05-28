@@ -65,7 +65,19 @@ public static class TelemetryEndpoints
                 region = geo.Region;
             }
 
-            var isBot = ua.DeviceType == "bot" || string.IsNullOrWhiteSpace(payload.Language);
+            var isBot = false;
+            string? botReason = null;
+
+            if (ua.DeviceType == "bot")
+            {
+                isBot = true;
+                botReason = "user-agent";
+            }
+            else if (string.IsNullOrWhiteSpace(payload.Language))
+            {
+                isBot = true;
+                botReason = "no-language";
+            }
 
             if (!isBot && !string.IsNullOrWhiteSpace(country))
             {
@@ -81,13 +93,49 @@ public static class TelemetryEndpoints
                 if (priorCountries.Count >= 3)
                 {
                     isBot = true;
-                    var priorEvents = await db.WebEvents
-                        .Where(e => e.SessionHash == sessionHash && !e.IsBot)
+                    botReason = "country-hop";
+                    await RetroactiveBotFlagAsync(db, sessionHash, botReason);
+                }
+            }
+
+            if (!isBot)
+            {
+                var windowStart = DateTimeOffset.UtcNow.AddSeconds(-60);
+                var recentPageViewCount = await db.WebEvents
+                    .Where(e => e.SessionHash == sessionHash && e.EventType == "page_view" && e.Timestamp >= windowStart)
+                    .CountAsync();
+
+                if (recentPageViewCount >= 5)
+                {
+                    isBot = true;
+                    botReason = "page-velocity";
+                    await RetroactiveBotFlagAsync(db, sessionHash, botReason);
+                }
+            }
+
+            if (!isBot && payload.EventType == "page_view" && !string.IsNullOrEmpty(payload.Page))
+            {
+                var fileName = Path.GetFileName(payload.Page.TrimEnd('/'));
+                if (!string.IsNullOrEmpty(fileName) && fileName.Contains('.'))
+                {
+                    var priorPages = await db.WebEvents
+                        .Where(e => e.SessionHash == sessionHash && e.EventType == "page_view" && e.Page != null)
+                        .Select(e => e.Page!)
                         .ToListAsync();
-                    foreach (var evt in priorEvents)
-                        evt.IsBot = true;
-                    if (priorEvents.Count > 0)
-                        await db.SaveChangesAsync();
+
+                    priorPages.Add(payload.Page);
+
+                    var distinctPaths = priorPages
+                        .Where(p => string.Equals(Path.GetFileName(p.TrimEnd('/')), fileName, StringComparison.OrdinalIgnoreCase))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Count();
+
+                    if (distinctPaths >= 5)
+                    {
+                        isBot = true;
+                        botReason = "path-scan";
+                        await RetroactiveBotFlagAsync(db, sessionHash, botReason);
+                    }
                 }
             }
 
@@ -109,6 +157,7 @@ public static class TelemetryEndpoints
                 Os = ua.Os,
                 DeviceType = ua.DeviceType,
                 IsBot = isBot,
+                BotReason = botReason,
                 Referrer = payload.Referrer,
                 Language = payload.Language,
                 Timestamp = payload.Timestamp
@@ -248,6 +297,23 @@ public static class TelemetryEndpoints
             logger.LogError(ex, "Failed to process mobile payload for site {SiteId}", siteId);
             return Results.StatusCode(500);
         }
+    }
+
+    /// <summary>
+    /// Retroactively flags all prior events in a session as bot traffic.
+    /// </summary>
+    private static async Task RetroactiveBotFlagAsync(TelemetryForgeDbContext db, string sessionHash, string reason)
+    {
+        var priorEvents = await db.WebEvents
+            .Where(e => e.SessionHash == sessionHash && !e.IsBot)
+            .ToListAsync();
+        foreach (var evt in priorEvents)
+        {
+            evt.IsBot = true;
+            evt.BotReason = reason;
+        }
+        if (priorEvents.Count > 0)
+            await db.SaveChangesAsync();
     }
 
     /// <summary>
