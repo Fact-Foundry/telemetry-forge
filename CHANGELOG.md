@@ -8,6 +8,7 @@
 - Page velocity bot detection — sessions with 5+ page_view events in 60 seconds are flagged as bot with retroactive flagging
 - Path scan bot detection — sessions requesting the same filename from 5+ different directory paths are flagged as bot (catches WordPress vulnerability scanners)
 - BotReason field on WebEvent — stores why an event was flagged (user-agent, no-language, country-hop, page-velocity, path-scan)
+- BotDetectionService — retroactive bot scanner that applies all heuristics to existing events and backfills BotReason on previously unclassified bots
 - Data API — read-only REST endpoints (`/api/data/web-events`, `/api/data/desktop-sessions`, `/api/data/mobile-sessions`) with pagination, date range, site, bot, and event type filters
 - Data API keys — site-scoped API keys (`tfrg_data_` prefix) for granting read access to specific site groups (e.g. separate keys for production vs sandbox)
 - DataApiKey entity with BCrypt-hashed keys and JSON site ID list
@@ -25,6 +26,7 @@
 
 - Analytics page — line charts for sessions by page, country, avg session duration, and referrer over selectable periods (Today, 7 Days, 30 Days) with site filter
 - Analytics pie charts — sessions by browser, OS, and device type displayed as pie charts below the line charts
+- Security page — bot-only event stream with dashboard stats (today/week/month/total), detection reason breakdown chips, site and reason filters, and "Scan for Bots" button for retroactive detection
 - Domain field on Sites — used to filter self-referrals from the referrer chart (e.g. kevinoftech.com won't appear as a referrer for its own site)
 - Dashboard "Avg Session Duration" card — shows average duration across web sessions this week
 - Event Stream Duration column — shows computed session duration (time between first and last event in the session)

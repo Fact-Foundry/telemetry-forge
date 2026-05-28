@@ -129,6 +129,7 @@ builder.Services.AddScoped<ApiKeyService>();
 builder.Services.AddScoped<DataApiKeyService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<VisitorHashService>();
+builder.Services.AddScoped<BotDetectionService>();
 builder.Services.AddSingleton<UserAgentParserService>();
 builder.Services.AddSingleton<GeoLocationService>();
 builder.Services.AddSingleton<LoggingEventPublisher>();

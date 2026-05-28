@@ -1,0 +1,182 @@
+@page "/security"
+
+<PageTitle>Security — TelemetryForge</PageTitle>
+
+<style>
+    .bot-table td, .bot-table th {
+        padding: 4px 8px !important;
+    }
+</style>
+
+<MudText Typo="Typo.h4" Class="mb-4">Security</MudText>
+
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="3">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Bots Today</MudText>
+            <MudText Typo="Typo.h4" Color="Color.Error">@_botsToday</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Bots This Week</MudText>
+            <MudText Typo="Typo.h4">@_botsThisWeek</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Bots This Month</MudText>
+            <MudText Typo="Typo.h4">@_botsThisMonth</MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Total Bot Events</MudText>
+            <MudText Typo="Typo.h4">@_botsTotal</MudText>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Class="pa-3 mb-4" Elevation="1">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+        <MudText Typo="Typo.subtitle1">Detection Breakdown</MudText>
+        <MudSpacer />
+        @foreach (var reason in _reasonCounts)
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                     Color="@GetReasonColor(reason.Key)">
+                @reason.Key: @reason.Value
+            </MudChip>
+        }
+    </MudStack>
+</MudPaper>
+
+<MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-2">
+    <MudSelect T="string" @bind-Value="_siteFilter" Label="Site" Variant="Variant.Outlined" Dense="true"
+               Style="max-width: 200px;" Immediate="true" Margin="Margin.Dense">
+        <MudSelectItem T="string" Value="@string.Empty">All Sites</MudSelectItem>
+        @foreach (var site in _sites)
+        {
+            <MudSelectItem T="string" Value="@site.Id">@site.Name</MudSelectItem>
+        }
+    </MudSelect>
+    <MudSelect T="string" @bind-Value="_reasonFilter" Label="Reason" Variant="Variant.Outlined" Dense="true"
+               Style="max-width: 160px;" Immediate="true" Margin="Margin.Dense">
+        <MudSelectItem T="string" Value="@string.Empty">All Reasons</MudSelectItem>
+        <MudSelectItem T="string" Value="@("user-agent")">user-agent</MudSelectItem>
+        <MudSelectItem T="string" Value="@("no-language")">no-language</MudSelectItem>
+        <MudSelectItem T="string" Value="@("country-hop")">country-hop</MudSelectItem>
+        <MudSelectItem T="string" Value="@("page-velocity")">page-velocity</MudSelectItem>
+        <MudSelectItem T="string" Value="@("path-scan")">path-scan</MudSelectItem>
+    </MudSelect>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyFilters"
+               StartIcon="@Icons.Material.Filled.FilterList" Size="Size.Small">
+        Filter
+    </MudButton>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="RunScan"
+               StartIcon="@Icons.Material.Filled.BugReport" Size="Size.Small"
+               Disabled="_scanning">
+        @(_scanning ? "Scanning..." : "Scan for Bots")
+    </MudButton>
+</MudStack>
+
+@if (!_events.Any())
+{
+    <MudPaper Class="pa-6" Elevation="1">
+        <MudStack AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Shield" Size="Size.Large" Color="Color.Default" />
+            <MudText Typo="Typo.h6">No bot events</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Default">
+                No bot traffic has been detected yet.
+            </MudText>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudTable Items="_events" Dense="true" Hover="true" Elevation="1" Class="bot-table" Style="table-layout:fixed;width:100%">
+        <HeaderContent>
+            <MudTh Style="width:40px"></MudTh>
+            <MudTh Style="width:120px">Site</MudTh>
+            <MudTh Style="width:100px">Event</MudTh>
+            <MudTh Style="width:110px">Reason</MudTh>
+            <MudTh>Page</MudTh>
+            <MudTh Style="width:80px">Session</MudTh>
+            <MudTh Style="width:60px">Country</MudTh>
+            <MudTh Style="width:130px">Time</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudIconButton Icon="@(context.Expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                               Size="Size.Small" OnClick="() => context.Expanded = !context.Expanded" />
+            </MudTd>
+            <MudTd Style="white-space:nowrap;">@context.SiteName</MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                         Color="@GetWebEventColor(context.EventType)">@context.EventType</MudChip>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                         Color="@GetReasonColor(context.BotReason)">@(context.BotReason ?? "unknown")</MudChip>
+            </MudTd>
+            <MudTd>
+                <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px;">
+                    @(context.Page ?? "—")
+                </div>
+            </MudTd>
+            <MudTd Style="font-family:monospace;font-size:0.8rem;">@context.SessionHash[..Math.Min(8, context.SessionHash.Length)]</MudTd>
+            <MudTd>@(context.Country ?? "—")</MudTd>
+            <MudTd Style="white-space:nowrap;">@FormatTime(context.Timestamp)</MudTd>
+        </RowTemplate>
+        <ChildRowContent>
+            @if (context.Expanded)
+            {
+                <MudTr>
+                    <td colspan="8">
+                        <MudPaper Class="pa-2 ma-1" Elevation="0" Outlined="true" Style="word-break:break-all;">
+                            <MudGrid Spacing="1">
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">Session</MudText>
+                                    <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.75rem;">@context.SessionHash</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">Page</MudText>
+                                    <MudText Typo="Typo.body2">@(context.Page ?? "—")</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">Status Code</MudText>
+                                    <MudText Typo="Typo.body2">@(context.StatusCode > 0 ? context.StatusCode.ToString() : "—")</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">Country</MudText>
+                                    <MudText Typo="Typo.body2">@(context.Country ?? "—")</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">Browser</MudText>
+                                    <MudText Typo="Typo.body2">@(context.Browser ?? "—")</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">OS</MudText>
+                                    <MudText Typo="Typo.body2">@(context.Os ?? "—")</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">Device Type</MudText>
+                                    <MudText Typo="Typo.body2">@(context.DeviceType ?? "—")</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">Language</MudText>
+                                    <MudText Typo="Typo.body2">@(context.Language ?? "—")</MudText>
+                                </MudItem>
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudText Typo="Typo.caption">Referrer</MudText>
+                                    <MudText Typo="Typo.body2">@(context.Referrer ?? "—")</MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </td>
+                </MudTr>
+            }
+        </ChildRowContent>
+    </MudTable>
+}
