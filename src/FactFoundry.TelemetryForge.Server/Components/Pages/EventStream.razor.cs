@@ -1,92 +1,117 @@
+using System.Text;
 using FactFoundry.TelemetryForge.Server.Data;
 using FactFoundry.TelemetryForge.Server.Data.Entities;
+using FactFoundry.TelemetryForge.Server.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace FactFoundry.TelemetryForge.Server.Components.Pages;
 
 /// <summary>
-/// Event Stream page showing a filterable feed of recent enriched events with expandable detail.
+/// Event Stream page showing a filterable feed of recent events with expandable detail.
 /// </summary>
 public partial class EventStream : ComponentBase
 {
     [Inject] private TelemetryForgeDbContext Db { get; set; } = default!;
+    [Inject] private IJSRuntime Js { get; set; } = default!;
+    [Inject] private AuthService AuthService { get; set; } = default!;
+
+    [SupplyParameterFromQuery(Name = "site")]
+    private string? SiteQueryParam { get; set; }
 
     private List<Site> _sites = [];
     private List<EventRow> _events = [];
     private string _siteFilter = string.Empty;
     private string _typeFilter = string.Empty;
+    private bool _hideBots = true;
+    private TimeZoneInfo _tz = TimeZoneInfo.Utc;
 
     protected override async Task OnInitializedAsync()
     {
+        if (!string.IsNullOrEmpty(SiteQueryParam))
+            _siteFilter = SiteQueryParam;
+
+        var tzId = await AuthService.GetServerSettingAsync("Display:Timezone");
+        if (!string.IsNullOrEmpty(tzId))
+        {
+            try { _tz = TimeZoneInfo.FindSystemTimeZoneById(tzId); }
+            catch (TimeZoneNotFoundException) { }
+        }
+
         _sites = await Db.Sites.AsNoTracking().OrderBy(s => s.Name).ToListAsync();
         await LoadEvents();
     }
 
     private async Task LoadEvents()
     {
-        var webQuery = Db.WebSessions.AsNoTracking().AsQueryable();
-        var desktopQuery = Db.DesktopSessions.AsNoTracking().AsQueryable();
-        var mobileQuery = Db.MobileSessions.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrEmpty(_siteFilter))
-        {
-            webQuery = webQuery.Where(s => s.SiteId == _siteFilter);
-            desktopQuery = desktopQuery.Where(s => s.SiteId == _siteFilter);
-            mobileQuery = mobileQuery.Where(s => s.SiteId == _siteFilter);
-        }
-
         var events = new List<EventRow>();
 
         if (_typeFilter is "" or "Web")
         {
-            var webSessions = await webQuery.OrderByDescending(s => s.IngestedAt).Take(50).ToListAsync();
-            events.AddRange(webSessions.Select(s => new EventRow
+            var webQuery = Db.WebEvents.AsNoTracking().AsQueryable();
+            if (_hideBots)
+                webQuery = webQuery.Where(e => !e.IsBot);
+            if (!string.IsNullOrEmpty(_siteFilter))
+                webQuery = webQuery.Where(e => e.SiteId == _siteFilter);
+
+            var webEvents = await webQuery.OrderByDescending(e => e.Timestamp).Take(100).ToListAsync();
+
+            var sessionHashes = webEvents.Select(e => e.SessionHash).Distinct().ToList();
+            var sessionDurations = await Db.WebEvents.AsNoTracking()
+                .Where(e => sessionHashes.Contains(e.SessionHash))
+                .GroupBy(e => e.SessionHash)
+                .Select(g => new { SessionHash = g.Key, MinTs = g.Min(e => e.Timestamp), MaxTs = g.Max(e => e.Timestamp) })
+                .ToDictionaryAsync(g => g.SessionHash, g => (int)(g.MaxTs - g.MinTs).TotalMilliseconds);
+
+            events.AddRange(webEvents.Select(e => new EventRow
             {
-                Id = s.Id,
-                SiteName = s.SiteName,
-                EventType = "Web",
-                IsFirstSeen = s.IsFirstVisit,
-                Platform = s.Platform,
-                DurationMs = s.DurationMs,
-                IngestedAt = s.IngestedAt,
-                SessionStart = s.SessionStart,
-                SessionEnd = s.SessionEnd,
-                EntryPage = s.EntryPage,
-                ExitPage = s.ExitPage,
-                PagePath = s.PagePath,
-                PageCount = s.PageCount,
-                StatusCodes = s.StatusCodes,
-                Language = s.Language,
-                Referrer = s.Referrer,
-                Country = s.Country,
-                Region = s.Region,
-                Browser = s.Browser,
-                Os = s.Os,
-                DeviceType = s.DeviceType,
-                SessionHash = s.SessionHash
+                Id = e.Id,
+                SiteName = e.SiteName,
+                SourceType = "Web",
+                WebEventType = e.EventType,
+                IsFirstSeen = e.IsFirstVisit,
+                IsBot = e.IsBot,
+                Platform = e.Browser ?? "Unknown",
+                IngestedAt = e.IngestedAt,
+                Timestamp = e.Timestamp.UtcDateTime,
+                Page = e.Page,
+                StatusCode = e.StatusCode,
+                EventName = e.EventName,
+                TargetUrl = e.TargetUrl,
+                Language = e.Language,
+                Referrer = e.Referrer,
+                Country = e.Country,
+                Region = e.Region,
+                Browser = e.Browser,
+                Os = e.Os,
+                DeviceType = e.DeviceType,
+                SessionHash = e.SessionHash,
+                DurationMs = sessionDurations.GetValueOrDefault(e.SessionHash, 0),
             }));
         }
 
         if (_typeFilter is "" or "Desktop")
         {
-            var desktopSessions = await desktopQuery.OrderByDescending(s => s.IngestedAt).Take(50).ToListAsync();
+            var desktopQuery = Db.DesktopSessions.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrEmpty(_siteFilter))
+                desktopQuery = desktopQuery.Where(s => s.SiteId == _siteFilter);
+
+            var desktopSessions = await desktopQuery.OrderByDescending(s => s.IngestedAt).Take(100).ToListAsync();
             events.AddRange(desktopSessions.Select(s => new EventRow
             {
                 Id = s.Id,
                 SiteName = s.AppName,
-                EventType = "Desktop",
+                SourceType = "Desktop",
                 IsFirstSeen = s.IsFirstInstall,
                 Platform = s.Platform,
                 DurationMs = s.DurationMs,
                 IngestedAt = s.IngestedAt,
-                SessionStart = s.SessionStart,
+                Timestamp = s.SessionStart,
                 SessionEnd = s.SessionEnd,
                 AppVersion = s.AppVersion,
                 OsVersion = s.OsVersion,
-                LicenseTier = s.LicenseTier,
                 FeaturePath = s.FeaturePath,
                 FeatureCount = s.FeatureCount,
                 ErrorEvents = s.ErrorEvents,
@@ -97,17 +122,21 @@ public partial class EventStream : ComponentBase
 
         if (_typeFilter is "" or "Mobile")
         {
-            var mobileSessions = await mobileQuery.OrderByDescending(s => s.IngestedAt).Take(50).ToListAsync();
+            var mobileQuery = Db.MobileSessions.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrEmpty(_siteFilter))
+                mobileQuery = mobileQuery.Where(s => s.SiteId == _siteFilter);
+
+            var mobileSessions = await mobileQuery.OrderByDescending(s => s.IngestedAt).Take(100).ToListAsync();
             events.AddRange(mobileSessions.Select(s => new EventRow
             {
                 Id = s.Id,
                 SiteName = s.AppName,
-                EventType = "Mobile",
+                SourceType = "Mobile",
                 IsFirstSeen = s.IsFirstInstall,
                 Platform = s.Platform,
                 DurationMs = s.DurationMs,
                 IngestedAt = s.IngestedAt,
-                SessionStart = s.SessionStart,
+                Timestamp = s.SessionStart,
                 SessionEnd = s.SessionEnd,
                 AppVersion = s.AppVersion,
                 OsVersion = s.OsVersion,
@@ -120,12 +149,53 @@ public partial class EventStream : ComponentBase
             }));
         }
 
-        _events = events.OrderByDescending(e => e.IngestedAt).Take(50).ToList();
+        _events = events.OrderByDescending(e => e.IngestedAt).Take(100).ToList();
     }
 
     private async Task ApplyFilters()
     {
         await LoadEvents();
+    }
+
+    private async Task OnHideBotsChanged(bool value)
+    {
+        _hideBots = value;
+        await LoadEvents();
+    }
+
+    private async Task ExportCsv()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Site,Source,Event,Visitor,Page/Feature,Session,Country,Time,Browser,OS,DeviceType,Language,Referrer,StatusCode");
+
+        foreach (var e in _events)
+        {
+            var eventCol = e.SourceType == "Web" ? e.WebEventType ?? "" : "session";
+            var visitor = e.IsBot ? "Bot" : e.IsFirstSeen ? "New" : "Returning";
+            var pageFeature = e.SourceType == "Web"
+                ? e.EventName ?? e.Page ?? ""
+                : $"{e.FeatureCount} features";
+            var session = e.SessionHash ?? "";
+
+            sb.AppendLine(string.Join(",",
+                Csv(e.SiteName), Csv(e.SourceType), Csv(eventCol), Csv(visitor),
+                Csv(pageFeature), Csv(session), Csv(e.Country ?? ""),
+                Csv(e.Timestamp.ToString("o")), Csv(e.Browser ?? ""), Csv(e.Os ?? ""),
+                Csv(e.DeviceType ?? ""), Csv(e.Language ?? ""), Csv(e.Referrer ?? ""),
+                e.StatusCode > 0 ? e.StatusCode.ToString() : ""));
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        await Js.InvokeVoidAsync("eval",
+            $"(() => {{ const a = document.createElement('a'); a.href = 'data:text/csv;base64,{base64}'; a.download = 'telemetry-events.csv'; a.click(); }})()");
+    }
+
+    private static string Csv(string value)
+    {
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        return value;
     }
 
     private static Color GetTypeColor(string type) => type switch
@@ -136,8 +206,22 @@ public partial class EventStream : ComponentBase
         _ => Color.Default
     };
 
+    private static Color GetWebEventColor(string? eventType) => eventType switch
+    {
+        "page_view" => Color.Info,
+        "custom" => Color.Tertiary,
+        "link_click" => Color.Warning,
+        "circuit_open" => Color.Default,
+        "circuit_close" => Color.Default,
+        _ => Color.Default
+    };
+
+    private string FormatTime(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(utc, _tz).ToString("M/d/yyyy H:mm");
+
     private static string FormatDuration(int ms) => ms switch
     {
+        0 => "—",
         < 1000 => $"{ms}ms",
         < 60000 => $"{ms / 1000.0:F1}s",
         _ => $"{ms / 60000.0:F1}m"
@@ -147,21 +231,24 @@ public partial class EventStream : ComponentBase
     {
         public long Id { get; set; }
         public string SiteName { get; set; } = string.Empty;
-        public string EventType { get; set; } = string.Empty;
+        public string SourceType { get; set; } = string.Empty;
+        public string? WebEventType { get; set; }
         public bool IsFirstSeen { get; set; }
         public string Platform { get; set; } = string.Empty;
         public int DurationMs { get; set; }
         public DateTime IngestedAt { get; set; }
-        public DateTime SessionStart { get; set; }
-        public DateTime SessionEnd { get; set; }
+        public DateTime Timestamp { get; set; }
+        public DateTime? SessionEnd { get; set; }
         public bool Expanded { get; set; }
 
-        // Web fields
-        public string? EntryPage { get; set; }
-        public string? ExitPage { get; set; }
-        public List<string> PagePath { get; set; } = [];
-        public int PageCount { get; set; }
-        public Dictionary<string, int> StatusCodes { get; set; } = [];
+        public bool IsBot { get; set; }
+
+        // Web event fields
+        public string? SessionHash { get; set; }
+        public string? Page { get; set; }
+        public int StatusCode { get; set; }
+        public string? EventName { get; set; }
+        public string? TargetUrl { get; set; }
         public string? Language { get; set; }
         public string? Referrer { get; set; }
         public string? Country { get; set; }
@@ -169,12 +256,10 @@ public partial class EventStream : ComponentBase
         public string? Browser { get; set; }
         public string? Os { get; set; }
         public string? DeviceType { get; set; }
-        public string? SessionHash { get; set; }
 
-        // Desktop/Mobile fields
+        // Desktop/Mobile session fields
         public string? AppVersion { get; set; }
         public string? OsVersion { get; set; }
-        public string? LicenseTier { get; set; }
         public string? FingerprintHash { get; set; }
         public string? DeviceHash { get; set; }
         public string? DeviceHashType { get; set; }

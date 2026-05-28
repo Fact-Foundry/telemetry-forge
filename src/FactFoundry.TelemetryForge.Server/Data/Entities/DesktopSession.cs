@@ -16,6 +16,11 @@ public class DesktopSession
     public string SiteId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Client-generated UUID identifying this session. Used to group heartbeat payloads.
+    /// </summary>
+    public string SessionId { get; set; } = string.Empty;
+
+    /// <summary>
     /// Application name reported by the client.
     /// </summary>
     public string AppName { get; set; } = string.Empty;
@@ -44,11 +49,6 @@ public class DesktopSession
     /// Whether this was the first session from this machine.
     /// </summary>
     public bool IsFirstInstall { get; set; }
-
-    /// <summary>
-    /// License tier extracted from the JWT (null if no license).
-    /// </summary>
-    public string? LicenseTier { get; set; }
 
     /// <summary>
     /// When the session started.

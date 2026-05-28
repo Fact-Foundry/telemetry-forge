@@ -11,6 +11,12 @@
                 <MudSelectItem Value="SiteType.Desktop">Desktop</MudSelectItem>
                 <MudSelectItem Value="SiteType.Mobile">Mobile</MudSelectItem>
             </MudSelect>
+            @if (_type == SiteType.Web)
+            {
+                <MudTextField @bind-Value="_domain" Label="Domain" Variant="Variant.Outlined"
+                              Placeholder="e.g. kevinoftech.com" Immediate="true"
+                              HelperText="Used to filter self-referrals in analytics" />
+            }
         </MudStack>
     </DialogContent>
     <DialogActions>
@@ -28,13 +34,17 @@
 
     private string _name = string.Empty;
     private SiteType _type = SiteType.Web;
+    private string _domain = string.Empty;
 
     private void Cancel() => MudDialog.Cancel();
 
     private void Submit()
     {
-        MudDialog.Close(DialogResult.Ok(new RegisterResult(_name, _type)));
+        var domain = _type == SiteType.Web && !string.IsNullOrWhiteSpace(_domain)
+            ? _domain.Trim().ToLowerInvariant()
+            : null;
+        MudDialog.Close(DialogResult.Ok(new RegisterResult(_name, _type, domain)));
     }
 
-    public record RegisterResult(string Name, SiteType Type);
+    public record RegisterResult(string Name, SiteType Type, string? Domain);
 }

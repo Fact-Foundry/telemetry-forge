@@ -8,6 +8,7 @@ obj/
 *.suo
 *.userosscache
 *.sln.docstates
+publish/
 
 ## NuGet
 *.nupkg
@@ -52,6 +53,9 @@ appsettings.*.json
 !appsettings.Development.json
 *.pfx
 *.key
+
+## Local-only docs
+docs/publishing.md
 
 ## Claude Code
 .claude/settings.local.json

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using FactFoundry.TelemetryForge.Server.Data;
 using FactFoundry.TelemetryForge.Server.Data.Entities;
 using FactFoundry.TelemetryForge.Server.Models.Events;
@@ -28,13 +30,13 @@ public static class TelemetryEndpoints
 
     private static async Task<IResult> HandleWebPayload(
         HttpContext context,
-        WebPayload payload,
+        WebEventPayload payload,
         TelemetryForgeDbContext db,
         VisitorHashService visitorHashService,
         UserAgentParserService userAgentParser,
         GeoLocationService geoLocationService,
         IEventPublisher publisher,
-        ILogger<WebPayload> logger)
+        ILogger<WebEventPayload> logger)
     {
         var siteId = (string)context.Items[ApiKeyValidationFilter.SiteIdKey]!;
 
@@ -44,36 +46,121 @@ public static class TelemetryEndpoints
             if (site is null)
                 return Results.Json(new { error = "Site not found." }, statusCode: 404);
 
-            var visitorHash = payload.GaHash ?? payload.IpHash;
-            var hashType = payload.GaHash is not null ? HashType.Ga : HashType.Ip;
-            var isFirstVisit = !payload.Dnt && await visitorHashService.IsFirstSeenAsync(visitorHash, hashType, SiteType.Web, siteId);
+            var sessionHash = HashSessionIdentity(payload.SessionId, payload.IpAddress);
+            var visitorSessionHash = HashVisitorSessionIdentity(payload.SessionId, payload.IpAddress);
 
-            var ua = userAgentParser.Parse(payload.UserAgent);
-            var clientIp = GeoLocationService.GetClientIp(context);
-            var geo = geoLocationService.Lookup(clientIp);
+            var visitorHash = payload.GaValue ?? payload.IpAddress;
+            var hashType = payload.GaValue is not null ? HashType.Ga : HashType.Ip;
+            var isFirstVisit = !payload.Dnt && await visitorHashService.IsFirstSeenAsync(visitorHash, hashType, SiteType.Web, siteId, visitorSessionHash);
+
+            var ua = userAgentParser.Parse(payload.UserAgent, payload.SecChUa, payload.SecChUaMobile, payload.SecChUaPlatform);
+
+            string? country = payload.Country;
+            string? region = payload.Region;
+            if (string.IsNullOrWhiteSpace(country))
+            {
+                var clientIp = GeoLocationService.GetClientIp(context);
+                var geo = geoLocationService.LookupDatabase(clientIp);
+                country = geo.Country;
+                region = geo.Region;
+            }
+
+            var isBot = false;
+            string? botReason = null;
+
+            if (ua.DeviceType == "bot")
+            {
+                isBot = true;
+                botReason = "user-agent";
+            }
+            else if (string.IsNullOrWhiteSpace(payload.Language))
+            {
+                isBot = true;
+                botReason = "no-language";
+            }
+
+            if (!isBot && !string.IsNullOrWhiteSpace(country))
+            {
+                var priorCountries = await db.WebEvents
+                    .Where(e => e.SessionHash == sessionHash && e.Country != null)
+                    .Select(e => e.Country!)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (!priorCountries.Contains(country))
+                    priorCountries.Add(country);
+
+                if (priorCountries.Count >= 3)
+                {
+                    isBot = true;
+                    botReason = "country-hop";
+                    await RetroactiveBotFlagAsync(db, sessionHash, botReason);
+                }
+            }
+
+            if (!isBot)
+            {
+                var windowStart = DateTimeOffset.UtcNow.AddSeconds(-60);
+                var recentPageViewCount = await db.WebEvents
+                    .Where(e => e.SessionHash == sessionHash && e.EventType == "page_view" && e.Timestamp >= windowStart)
+                    .CountAsync();
+
+                if (recentPageViewCount >= 5)
+                {
+                    isBot = true;
+                    botReason = "page-velocity";
+                    await RetroactiveBotFlagAsync(db, sessionHash, botReason);
+                }
+            }
+
+            if (!isBot && payload.EventType == "page_view" && !string.IsNullOrEmpty(payload.Page))
+            {
+                var fileName = Path.GetFileName(payload.Page.TrimEnd('/'));
+                if (!string.IsNullOrEmpty(fileName) && fileName.Contains('.'))
+                {
+                    var priorPages = await db.WebEvents
+                        .Where(e => e.SessionHash == sessionHash && e.EventType == "page_view" && e.Page != null)
+                        .Select(e => e.Page!)
+                        .ToListAsync();
+
+                    priorPages.Add(payload.Page);
+
+                    var distinctPaths = priorPages
+                        .Where(p => string.Equals(Path.GetFileName(p.TrimEnd('/')), fileName, StringComparison.OrdinalIgnoreCase))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Count();
+
+                    if (distinctPaths >= 5)
+                    {
+                        isBot = true;
+                        botReason = "path-scan";
+                        await RetroactiveBotFlagAsync(db, sessionHash, botReason);
+                    }
+                }
+            }
 
             var enriched = new EnrichedWebEvent
             {
                 SiteId = siteId,
                 SiteName = site.Name,
-                Platform = payload.Platform,
-                SessionStart = payload.SessionStart,
-                SessionEnd = payload.SessionEnd,
-                DurationMs = payload.DurationMs,
-                SessionHash = payload.IpHash,
+                SessionHash = sessionHash,
                 IsFirstVisit = isFirstVisit,
-                Country = geo.Country,
-                Region = geo.Region,
+                Page = payload.Page,
+                StatusCode = payload.StatusCode,
+                EventType = payload.EventType,
+                EventName = payload.EventName,
+                EventData = payload.EventData,
+                TargetUrl = payload.TargetUrl,
+                Country = country,
+                Region = region,
                 Browser = ua.Browser,
                 Os = ua.Os,
                 DeviceType = ua.DeviceType,
+                IsBot = isBot,
+                BotReason = botReason,
                 Referrer = payload.Referrer,
                 Language = payload.Language,
-                EntryPage = payload.EntryPage,
-                ExitPage = payload.ExitPage,
-                PagePath = payload.PagePath,
-                PageCount = payload.PagePath.Count,
-                StatusCodes = payload.StatusCodes
+                Timestamp = payload.Timestamp
             };
 
             await publisher.PublishAsync(enriched, context.RequestAborted);
@@ -89,7 +176,7 @@ public static class TelemetryEndpoints
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to process web payload for site {SiteId}", siteId);
+            logger.LogError(ex, "Failed to process web event for site {SiteId}", siteId);
             return Results.StatusCode(500);
         }
     }
@@ -121,8 +208,9 @@ public static class TelemetryEndpoints
                 Platform = payload.Platform,
                 OsVersion = payload.OsVersion,
                 FingerprintHash = payload.FingerprintHash,
+                SessionId = payload.SessionId,
+                Sequence = payload.Sequence,
                 IsFirstInstall = isFirstInstall,
-                LicenseTier = null,
                 SessionStart = payload.SessionStart,
                 SessionEnd = payload.SessionEnd,
                 DurationMs = payload.DurationMs,
@@ -183,6 +271,8 @@ public static class TelemetryEndpoints
                 OsVersion = payload.OsVersion,
                 DeviceHash = payload.DeviceHash,
                 DeviceHashType = payload.DeviceHashType,
+                SessionId = payload.SessionId,
+                Sequence = payload.Sequence,
                 IsFirstInstall = isFirstInstall,
                 SessionStart = payload.SessionStart,
                 SessionEnd = payload.SessionEnd,
@@ -207,5 +297,48 @@ public static class TelemetryEndpoints
             logger.LogError(ex, "Failed to process mobile payload for site {SiteId}", siteId);
             return Results.StatusCode(500);
         }
+    }
+
+    /// <summary>
+    /// Retroactively flags all prior events in a session as bot traffic.
+    /// </summary>
+    private static async Task RetroactiveBotFlagAsync(TelemetryForgeDbContext db, string sessionHash, string reason)
+    {
+        var priorEvents = await db.WebEvents
+            .Where(e => e.SessionHash == sessionHash && !e.IsBot)
+            .ToListAsync();
+        foreach (var evt in priorEvents)
+        {
+            evt.IsBot = true;
+            evt.BotReason = reason;
+        }
+        if (priorEvents.Count > 0)
+            await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Hashes a session ID with the client IP for event grouping.
+    /// Uses a "session" salt prefix so the result cannot be correlated
+    /// with the visitor-scoped hash stored in the VisitorHash table.
+    /// </summary>
+    private static string HashSessionIdentity(string sessionId, string ipAddress)
+    {
+        var dailySalt = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var input = $"{sessionId}:{ipAddress}:session:{dailySalt}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexStringLower(hash);
+    }
+
+    /// <summary>
+    /// Hashes a session ID with the client IP for first-visit carry-forward.
+    /// No daily salt — this is an identity-scoped value that needs to match
+    /// across the entire first session. Cannot be correlated with WebEvent.SessionHash
+    /// because that hash includes a daily salt prefix.
+    /// </summary>
+    private static string HashVisitorSessionIdentity(string sessionId, string ipAddress)
+    {
+        var input = $"{sessionId}:{ipAddress}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexStringLower(hash);
     }
 }

@@ -22,7 +22,7 @@ Your Mobile App  (FactFoundry.TelemetryForge.Mobile)  ──→                 
 Any Platform     (raw REST call)                      ──→                         ──→  Any Sink
 ```
 
-Client packages are available in a separate repository: [telemetry-forge-sdk](https://github.com/FactFoundry/telemetry-forge-sdk)
+Client packages are available in a separate repository: [telemetry-forge-sdk](https://github.com/Fact-Foundry/telemetry-forge-sdk)
 
 ## Where Does the Data Go?
 
@@ -32,6 +32,41 @@ TelemetryForge Server uses a configurable event pipeline. After receiving and en
 - **HTTP Endpoint** — forwards enriched events to external services like Microsoft Fabric Eventhouse, Azure Service Bus, or any webhook
 
 Sinks can run simultaneously — store locally for ad-hoc queries while streaming to Fabric Eventhouse for real-time Power BI dashboards. Configure them per-site or globally.
+
+## What Gets Stored
+
+TelemetryForge stores session-level summaries, not individual page views or click streams. Raw IP addresses are never persisted — geolocation is resolved from CloudFlare headers (sent by the SDK) or an optional GeoIP database fallback, and only the resolved country and region are kept. Visitor identifiers are one-way hashed before storage. Suspected bot traffic is flagged automatically via User-Agent pattern matching and missing Accept-Language headers.
+
+### Web Sessions
+
+| Category | Fields |
+|----------|--------|
+| **Identity** | Daily-salted session hash, first-visit flag |
+| **Timing** | Session start, session end, duration |
+| **Pages** | Entry page, exit page, page count, ordered page path |
+| **Browser** | Browser name, OS, device type (parsed from User-Agent), language, referrer |
+| **Location** | Country, region (from CloudFlare headers or optional GeoIP database) |
+| **Errors** | HTTP status codes encountered during the session |
+
+### Desktop Sessions
+
+| Category | Fields |
+|----------|--------|
+| **Identity** | Hashed machine fingerprint, first-install flag |
+| **App** | Application name, version, platform, OS version |
+| **Timing** | Session start, session end, duration |
+| **Usage** | Feature count, ordered feature path |
+| **Errors** | Error count, error events (message, stack trace, timestamp) |
+
+### Mobile Sessions
+
+| Category | Fields |
+|----------|--------|
+| **Identity** | Hashed device identifier, identifier type, first-install flag |
+| **App** | Application name, version, platform, OS version |
+| **Timing** | Session start, session end, duration |
+| **Usage** | Feature count, ordered feature path |
+| **Errors** | Error count, error events (message, stack trace, timestamp) |
 
 ## Getting Started
 

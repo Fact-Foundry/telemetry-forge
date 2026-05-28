@@ -22,8 +22,17 @@ public class DesktopPayload
     [JsonPropertyName("fingerprint_hash")]
     public string FingerprintHash { get; set; } = string.Empty;
 
-    [JsonPropertyName("license_jwt")]
-    public string? LicenseJwt { get; set; }
+    /// <summary>
+    /// Client-generated UUID, stable for the lifetime of the app session. Used to group heartbeats.
+    /// </summary>
+    [JsonPropertyName("session_id")]
+    public string SessionId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Monotonically increasing counter (0 for first heartbeat). Detects gaps or reordering.
+    /// </summary>
+    [JsonPropertyName("sequence")]
+    public int Sequence { get; set; }
 
     [JsonPropertyName("session_start")]
     public DateTime SessionStart { get; set; }

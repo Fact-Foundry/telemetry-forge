@@ -21,6 +21,11 @@ public class Site
     public SiteType Type { get; set; }
 
     /// <summary>
+    /// The domain of the site (e.g. "kevinoftech.com"), used for filtering self-referrals in analytics.
+    /// </summary>
+    public string? Domain { get; set; }
+
+    /// <summary>
     /// Bcrypt hash of the issued API key. The raw key is never stored.
     /// </summary>
     public string ApiKeyHash { get; set; } = string.Empty;

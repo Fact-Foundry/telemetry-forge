@@ -37,7 +37,12 @@ public class TelemetryForgeDbContext : DbContext
     public DbSet<Sink> Sinks => Set<Sink>();
 
     /// <summary>
-    /// Stored web telemetry sessions.
+    /// Raw web telemetry events (per-request).
+    /// </summary>
+    public DbSet<WebEvent> WebEvents => Set<WebEvent>();
+
+    /// <summary>
+    /// Materialized web telemetry sessions (computed from WebEvents).
     /// </summary>
     public DbSet<WebSession> WebSessions => Set<WebSession>();
 
@@ -50,6 +55,11 @@ public class TelemetryForgeDbContext : DbContext
     /// Stored mobile telemetry sessions.
     /// </summary>
     public DbSet<MobileSession> MobileSessions => Set<MobileSession>();
+
+    /// <summary>
+    /// API keys that grant read access to telemetry data for scoped site sets.
+    /// </summary>
+    public DbSet<DataApiKey> DataApiKeys => Set<DataApiKey>();
 
     public TelemetryForgeDbContext(DbContextOptions<TelemetryForgeDbContext> options)
         : base(options)
@@ -93,6 +103,18 @@ public class TelemetryForgeDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
         });
 
+        modelBuilder.Entity<WebEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SiteId).IsRequired();
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(20);
+            entity.HasIndex(e => e.SiteId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.SessionHash);
+            entity.HasIndex(e => e.Materialized);
+            entity.HasIndex(e => e.IsBot);
+        });
+
         modelBuilder.Entity<WebSession>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -109,6 +131,7 @@ public class TelemetryForgeDbContext : DbContext
             entity.Property(e => e.SiteId).IsRequired();
             entity.HasIndex(e => e.SiteId);
             entity.HasIndex(e => e.SessionStart);
+            entity.HasIndex(e => e.SessionId);
             entity.Property(e => e.FeaturePath).HasJsonConversion();
             entity.Property(e => e.ErrorEvents).HasJsonConversion();
         });
@@ -119,8 +142,17 @@ public class TelemetryForgeDbContext : DbContext
             entity.Property(e => e.SiteId).IsRequired();
             entity.HasIndex(e => e.SiteId);
             entity.HasIndex(e => e.SessionStart);
+            entity.HasIndex(e => e.SessionId);
             entity.Property(e => e.FeaturePath).HasJsonConversion();
             entity.Property(e => e.ErrorEvents).HasJsonConversion();
+        });
+
+        modelBuilder.Entity<DataApiKey>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.ApiKeyHash).IsRequired();
+            entity.Property(e => e.SiteIds).HasJsonConversion();
         });
     }
 }

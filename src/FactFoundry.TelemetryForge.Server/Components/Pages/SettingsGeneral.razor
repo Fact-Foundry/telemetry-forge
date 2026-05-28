@@ -1,0 +1,186 @@
+@page "/settings/general"
+@using FactFoundry.TelemetryForge.Server.Services
+@inject AuthService AuthService
+@inject GeoLocationService GeoLocationService
+@inject ISnackbar Snackbar
+
+<PageTitle>General Settings — TelemetryForge</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">General Settings</MudText>
+
+<MudStack Spacing="4">
+    @* ── Server ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-3">Server</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudTextField @bind-Value="_serverName" Label="Instance Name" Variant="Variant.Outlined"
+                          Immediate="true" Style="max-width:400px" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveServerName"
+                       Disabled="@(string.IsNullOrWhiteSpace(_serverName))">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @* ── GeoIP ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudText Typo="Typo.h6">GeoIP</MudText>
+            @if (GeoLocationService.IsDatabaseAvailable)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success">Database Active</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">CloudFlare Only</MudChip>
+            }
+        </MudStack>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Geolocation is resolved from CloudFlare headers (CF-IPCountry) automatically when behind CloudFlare.
+            Optionally configure a MaxMind GeoLite2 database as a fallback for region-level detail or non-CloudFlare deployments.
+            A server restart is required after changing the database path.
+        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudTextField @bind-Value="_geoIpPath" Label="Database File Path" Variant="Variant.Outlined"
+                          Immediate="true" Placeholder="/path/to/GeoLite2-City.mmdb"
+                          Style="max-width:500px" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveGeoIpPath"
+                       Disabled="@(string.IsNullOrWhiteSpace(_geoIpPath))">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @* ── Session Settings ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Session Settings</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            A web session is considered closed when no new events arrive within the inactivity window.
+            Events are then materialized into a session summary.
+        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudNumericField @bind-Value="_inactivityMinutes" Label="Inactivity window (minutes)" Variant="Variant.Outlined"
+                             Min="1" Max="1440" Immediate="true" Style="max-width:250px" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveInactivityWindow"
+                       Disabled="@(_inactivityMinutes < 1)">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @* ── Display ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Display</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Timezone used for displaying dates and times in the admin UI. All data is stored in UTC.
+        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudAutocomplete T="string" @bind-Value="_timezone" Label="Timezone" Variant="Variant.Outlined"
+                             SearchFunc="SearchTimezones" ToStringFunc="FormatTimezoneLabel"
+                             Immediate="true" Style="max-width:500px" Dense="true"
+                             MaxItems="50" CoerceText="true" CoerceValue="true" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveTimezone"
+                       Disabled="@(string.IsNullOrWhiteSpace(_timezone))">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @* ── Data Retention ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Data Retention</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Sessions older than this will be automatically purged. Set to 0 to keep data indefinitely.
+        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudNumericField @bind-Value="_retentionDays" Label="Retention (days)" Variant="Variant.Outlined"
+                             Min="0" Immediate="true" Style="max-width:200px" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveRetention">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudStack>
+
+@code {
+    private string _serverName = string.Empty;
+    private string _geoIpPath = string.Empty;
+    private string _timezone = "UTC";
+    private int _inactivityMinutes = 30;
+    private int _retentionDays;
+
+    private static readonly List<(string Id, string Label)> AllTimezones = TimeZoneInfo.GetSystemTimeZones()
+        .OrderBy(tz => tz.BaseUtcOffset)
+        .Select(tz => (tz.Id, $"(UTC{(tz.BaseUtcOffset < TimeSpan.Zero ? "-" : "+")}{tz.BaseUtcOffset:hh\\:mm}) {tz.Id}"))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _serverName = await AuthService.GetServerSettingAsync("Server:Name") ?? string.Empty;
+        _geoIpPath = await AuthService.GetServerSettingAsync("GeoIP:DatabasePath") ?? string.Empty;
+        _timezone = await AuthService.GetServerSettingAsync("Display:Timezone") ?? "UTC";
+
+        var inactivityValue = await AuthService.GetServerSettingAsync("Session:InactivityMinutes");
+        _inactivityMinutes = int.TryParse(inactivityValue, out var inactivity) && inactivity > 0 ? inactivity : 30;
+
+        var retentionValue = await AuthService.GetServerSettingAsync("Data:RetentionDays");
+        _retentionDays = int.TryParse(retentionValue, out var days) ? days : 0;
+    }
+
+    private async Task SaveServerName()
+    {
+        await AuthService.SaveServerSettingAsync("Server:Name", _serverName.Trim());
+        Snackbar.Add("Server name saved.", Severity.Success);
+    }
+
+    private async Task SaveGeoIpPath()
+    {
+        await AuthService.SaveServerSettingAsync("GeoIP:DatabasePath", _geoIpPath.Trim());
+        Snackbar.Add("GeoIP database path saved. Restart the server to apply.", Severity.Success);
+    }
+
+    private async Task SaveInactivityWindow()
+    {
+        await AuthService.SaveServerSettingAsync("Session:InactivityMinutes", _inactivityMinutes.ToString());
+        Snackbar.Add($"Session inactivity window set to {_inactivityMinutes} minutes.", Severity.Success);
+    }
+
+    private async Task SaveTimezone()
+    {
+        try
+        {
+            TimeZoneInfo.FindSystemTimeZoneById(_timezone);
+            await AuthService.SaveServerSettingAsync("Display:Timezone", _timezone);
+            Snackbar.Add($"Timezone set to {_timezone}.", Severity.Success);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            Snackbar.Add("Invalid timezone ID.", Severity.Error);
+        }
+    }
+
+    private Task<IEnumerable<string>> SearchTimezones(string? value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value) || AllTimezones.Any(tz => tz.Label == value))
+            return Task.FromResult(AllTimezones.Select(tz => tz.Id));
+
+        var results = AllTimezones
+            .Where(tz => tz.Label.Contains(value, StringComparison.OrdinalIgnoreCase)
+                         || tz.Id.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .Select(tz => tz.Id);
+        return Task.FromResult(results);
+    }
+
+    private static string FormatTimezoneLabel(string? id)
+    {
+        if (string.IsNullOrEmpty(id)) return string.Empty;
+        var match = AllTimezones.FirstOrDefault(tz => tz.Id == id);
+        return match.Label ?? id;
+    }
+
+    private async Task SaveRetention()
+    {
+        await AuthService.SaveServerSettingAsync("Data:RetentionDays", _retentionDays.ToString());
+        Snackbar.Add($"Retention set to {(_retentionDays == 0 ? "indefinite" : $"{_retentionDays} days")}.", Severity.Success);
+    }
+}

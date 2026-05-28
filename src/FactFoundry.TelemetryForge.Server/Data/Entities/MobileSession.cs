@@ -16,6 +16,11 @@ public class MobileSession
     public string SiteId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Client-generated UUID identifying this session. Used to group heartbeat payloads.
+    /// </summary>
+    public string SessionId { get; set; } = string.Empty;
+
+    /// <summary>
     /// Application name reported by the client.
     /// </summary>
     public string AppName { get; set; } = string.Empty;

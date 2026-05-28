@@ -50,6 +50,7 @@ else
     <MudTable Items="_sites" Hover="true" Elevation="1" Dense="true">
         <HeaderContent>
             <MudTh>Name</MudTh>
+            <MudTh>Domain</MudTh>
             <MudTh>Type</MudTh>
             <MudTh>Status</MudTh>
             <MudTh>Registered</MudTh>
@@ -58,6 +59,7 @@ else
         </HeaderContent>
         <RowTemplate>
             <MudTd>@context.Name</MudTd>
+            <MudTd>@(context.Domain ?? "—")</MudTd>
             <MudTd>
                 <MudChip T="string" Size="Size.Small" Color="GetTypeColor(context.Type)">
                     @context.Type
@@ -73,6 +75,9 @@ else
             <MudTd>
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" AnchorOrigin="Origin.BottomRight"
                          TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="() => EditDomain(context)">
+                        Edit Domain
+                    </MudMenuItem>
                     <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="() => RegenerateKey(context)">
                         Regenerate Key
                     </MudMenuItem>
@@ -116,6 +121,7 @@ else
                 Id = Guid.NewGuid().ToString(),
                 Name = data.Name,
                 Type = data.Type,
+                Domain = data.Domain,
                 ApiKeyHash = hash,
                 RegisteredAt = DateTime.UtcNow
             };
@@ -170,6 +176,24 @@ else
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", _generatedKey);
             Snackbar.Add("API key copied to clipboard.", Severity.Success);
+        }
+    }
+
+    private async Task EditDomain(Site site)
+    {
+        var parameters = new DialogParameters<Dialogs.EditDomainDialog>
+        {
+            { x => x.Domain, site.Domain ?? string.Empty }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<Dialogs.EditDomainDialog>("Edit Domain", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled && result.Data is string domain)
+        {
+            site.Domain = string.IsNullOrWhiteSpace(domain) ? null : domain.Trim().ToLowerInvariant();
+            await Db.SaveChangesAsync();
+            Snackbar.Add($"Domain updated for {site.Name}.", Severity.Success);
         }
     }
 

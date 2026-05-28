@@ -7,8 +7,8 @@ namespace FactFoundry.TelemetryForge.Server.Services;
 
 /// <summary>
 /// Resolves IP addresses to country and region using a MaxMind GeoLite2 database.
+/// Used as a fallback when the SDK does not supply a country (e.g., no CloudFlare).
 /// Returns null values gracefully when no database is configured.
-/// Checks IConfiguration first, then falls back to the DB-stored setting.
 /// </summary>
 public class GeoLocationService : IDisposable
 {
@@ -51,20 +51,20 @@ public class GeoLocationService : IDisposable
         }
         else
         {
-            _logger.LogInformation("GeoIP database not configured — country/region fields will be null");
+            _logger.LogInformation("GeoIP database not configured — country/region fields will rely on SDK-provided values");
         }
     }
 
     /// <summary>
-    /// Whether a GeoIP database is loaded and available for lookups.
+    /// Whether a GeoIP database is loaded and available for fallback lookups.
     /// </summary>
-    public bool IsAvailable => _reader is not null;
+    public bool IsDatabaseAvailable => _reader is not null;
 
     /// <summary>
-    /// Resolves an IP address to country and region. Returns nulls if the database
-    /// is not configured or the IP cannot be resolved.
+    /// Resolves an IP address to country and region using the MaxMind database.
+    /// Returns nulls if the database is not configured or the IP cannot be resolved.
     /// </summary>
-    public GeoLocationResult Lookup(IPAddress? ipAddress)
+    public GeoLocationResult LookupDatabase(IPAddress? ipAddress)
     {
         if (_reader is null || ipAddress is null)
             return GeoLocationResult.Empty;

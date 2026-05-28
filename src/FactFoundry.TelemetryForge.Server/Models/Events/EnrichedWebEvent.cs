@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace FactFoundry.TelemetryForge.Server.Models.Events;
 
 /// <summary>
-/// An enriched web session event, ready for publishing to sinks.
+/// An enriched web telemetry event, ready for publishing to sinks.
 /// </summary>
 public class EnrichedWebEvent
 {
@@ -13,23 +13,29 @@ public class EnrichedWebEvent
     [JsonPropertyName("site_name")]
     public string SiteName { get; set; } = string.Empty;
 
-    [JsonPropertyName("platform")]
-    public string Platform { get; set; } = string.Empty;
-
-    [JsonPropertyName("session_start")]
-    public DateTime SessionStart { get; set; }
-
-    [JsonPropertyName("session_end")]
-    public DateTime SessionEnd { get; set; }
-
-    [JsonPropertyName("duration_ms")]
-    public int DurationMs { get; set; }
-
     [JsonPropertyName("session_hash")]
     public string SessionHash { get; set; } = string.Empty;
 
     [JsonPropertyName("is_first_visit")]
     public bool IsFirstVisit { get; set; }
+
+    [JsonPropertyName("page")]
+    public string Page { get; set; } = string.Empty;
+
+    [JsonPropertyName("status_code")]
+    public int StatusCode { get; set; }
+
+    [JsonPropertyName("event_type")]
+    public string EventType { get; set; } = "page_view";
+
+    [JsonPropertyName("event_name")]
+    public string? EventName { get; set; }
+
+    [JsonPropertyName("event_data")]
+    public Dictionary<string, object>? EventData { get; set; }
+
+    [JsonPropertyName("target_url")]
+    public string? TargetUrl { get; set; }
 
     [JsonPropertyName("country")]
     public string? Country { get; set; }
@@ -52,18 +58,12 @@ public class EnrichedWebEvent
     [JsonPropertyName("language")]
     public string Language { get; set; } = string.Empty;
 
-    [JsonPropertyName("entry_page")]
-    public string EntryPage { get; set; } = string.Empty;
+    [JsonPropertyName("is_bot")]
+    public bool IsBot { get; set; }
 
-    [JsonPropertyName("exit_page")]
-    public string ExitPage { get; set; } = string.Empty;
+    [JsonPropertyName("bot_reason")]
+    public string? BotReason { get; set; }
 
-    [JsonPropertyName("page_path")]
-    public List<string> PagePath { get; set; } = [];
-
-    [JsonPropertyName("page_count")]
-    public int PageCount { get; set; }
-
-    [JsonPropertyName("status_codes")]
-    public Dictionary<string, int> StatusCodes { get; set; } = [];
+    [JsonPropertyName("timestamp")]
+    public DateTimeOffset Timestamp { get; set; }
 }

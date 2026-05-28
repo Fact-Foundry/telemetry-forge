@@ -1,0 +1,62 @@
+@using FactFoundry.TelemetryForge.Server.Data.Entities
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudTextField @bind-Value="_name" Label="Key Name" Variant="Variant.Outlined"
+                          Immediate="true" Placeholder="e.g. KoT Production, Sandbox" />
+
+            <MudText Typo="Typo.subtitle2">Authorized Sites</MudText>
+            @if (_sites.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No sites registered yet.</MudText>
+            }
+            else
+            {
+                @foreach (var site in _sites)
+                {
+                    <MudCheckBox T="bool" Value="@_selectedSiteIds.Contains(site.Id)"
+                                 ValueChanged="v => ToggleSite(site.Id, v)"
+                                 Label="@($"{site.Name} ({site.Type})")" Dense="true" />
+                }
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_name) || _selectedSiteIds.Count == 0)">
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public List<Site> Sites { get; set; } = [];
+
+    private string _name = string.Empty;
+    private List<Site> _sites = [];
+    private HashSet<string> _selectedSiteIds = [];
+
+    protected override void OnInitialized()
+    {
+        _sites = Sites;
+    }
+
+    private void ToggleSite(string siteId, bool selected)
+    {
+        if (selected)
+            _selectedSiteIds.Add(siteId);
+        else
+            _selectedSiteIds.Remove(siteId);
+    }
+
+    /// <summary>
+    /// Result returned from the dialog.
+    /// </summary>
+    public record DataApiKeyResult(string Name, List<string> SiteIds);
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(new DataApiKeyResult(_name.Trim(), _selectedSiteIds.ToList())));
+    private void Cancel() => MudDialog.Cancel();
+}
