@@ -30,6 +30,10 @@ public partial class Analytics : ComponentBase
     private ChartData _durationChart = new();
     private ChartData _referrerChart = new();
 
+    private PieData _browserPie = new();
+    private PieData _osPie = new();
+    private PieData _devicePie = new();
+
     private readonly LineChartOptions _lineOptions = new() { YAxisTicks = 10 };
 
     protected override async Task OnInitializedAsync()
@@ -83,7 +87,10 @@ public partial class Analytics : ComponentBase
                 Page = e.Page,
                 Country = e.Country,
                 Referrer = e.Referrer,
-                SiteId = e.SiteId
+                SiteId = e.SiteId,
+                Browser = e.Browser,
+                Os = e.Os,
+                DeviceType = e.DeviceType
             })
             .ToListAsync();
 
@@ -96,6 +103,10 @@ public partial class Analytics : ComponentBase
         _countryChart = BuildChart(events, dates, labels, e => e.Country ?? "Unknown");
         _durationChart = await BuildDurationChartAsync(from, queryEnd, dates, labels);
         _referrerChart = BuildReferrerChart(events, dates, labels);
+
+        _browserPie = BuildPie(events, e => e.Browser ?? "Unknown");
+        _osPie = BuildPie(events, e => e.Os ?? "Unknown");
+        _devicePie = BuildPie(events, e => e.DeviceType ?? "Unknown");
     }
 
     private static ChartData BuildChart(
@@ -222,6 +233,29 @@ public partial class Analytics : ComponentBase
         return new ChartData { Series = series, Labels = labels };
     }
 
+    private static PieData BuildPie(
+        List<EventProjection> events,
+        Func<EventProjection, string> dimensionSelector)
+    {
+        var grouped = events
+            .GroupBy(e => new { Dimension = dimensionSelector(e), e.SessionHash })
+            .Select(g => g.Key)
+            .GroupBy(x => x.Dimension)
+            .Select(g => new { Dimension = g.Key, Count = g.Count() })
+            .OrderByDescending(g => g.Count)
+            .Take(MaxSeries)
+            .ToList();
+
+        return new PieData
+        {
+            Series = [new ChartSeries<double>
+            {
+                Data = grouped.Select(g => (double)g.Count).ToArray()
+            }],
+            Labels = grouped.Select(g => $"{g.Dimension} ({g.Count})").ToArray()
+        };
+    }
+
     private (DateTime from, DateTime to) GetDateRange()
     {
         var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _tz);
@@ -262,9 +296,18 @@ public partial class Analytics : ComponentBase
         public string? Country { get; set; }
         public string? Referrer { get; set; }
         public string SiteId { get; set; } = string.Empty;
+        public string? Browser { get; set; }
+        public string? Os { get; set; }
+        public string? DeviceType { get; set; }
     }
 
     private class ChartData
+    {
+        public List<ChartSeries<double>> Series { get; set; } = [];
+        public string[] Labels { get; set; } = [];
+    }
+
+    private class PieData
     {
         public List<ChartSeries<double>> Series { get; set; } = [];
         public string[] Labels { get; set; } = [];

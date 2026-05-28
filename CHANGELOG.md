@@ -21,6 +21,7 @@
 ### UI Improvements
 
 - Analytics page — line charts for sessions by page, country, avg session duration, and referrer over selectable periods (Today, 7 Days, 30 Days) with site filter
+- Analytics pie charts — sessions by browser, OS, and device type displayed as pie charts below the line charts
 - Domain field on Sites — used to filter self-referrals from the referrer chart (e.g. kevinoftech.com won't appear as a referrer for its own site)
 - Dashboard "Avg Session Duration" card — shows average duration across web sessions this week
 - Event Stream Duration column — shows computed session duration (time between first and last event in the session)

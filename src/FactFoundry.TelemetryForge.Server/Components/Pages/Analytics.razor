@@ -40,6 +40,54 @@
 else
 {
     <MudStack Spacing="4">
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by Browser</MudText>
+                    @if (_browserPie.Labels.Length > 0)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_browserPie.Series"
+                                  ChartLabels="_browserPie.Labels" Width="100%" Height="300px"
+                                  LegendPosition="Position.Bottom" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">No browser data for this period.</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by OS</MudText>
+                    @if (_osPie.Labels.Length > 0)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_osPie.Series"
+                                  ChartLabels="_osPie.Labels" Width="100%" Height="300px"
+                                  LegendPosition="Position.Bottom" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">No OS data for this period.</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by Device Type</MudText>
+                    @if (_devicePie.Labels.Length > 0)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_devicePie.Series"
+                                  ChartLabels="_devicePie.Labels" Width="100%" Height="300px"
+                                  LegendPosition="Position.Bottom" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">No device data for this period.</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
         <MudPaper Class="pa-4" Elevation="1">
             <MudText Typo="Typo.h6" Class="mb-2">Sessions by Page</MudText>
             @if (_pageChart.Series.Count > 0)
@@ -95,5 +143,6 @@ else
                 <MudText Typo="Typo.body2" Color="Color.Default">No referrer data for this period.</MudText>
             }
         </MudPaper>
+
     </MudStack>
 }
