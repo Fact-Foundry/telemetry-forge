@@ -119,9 +119,9 @@ public static class DataEndpoints
         }
 
         if (from.HasValue)
-            query = query.Where(s => s.SessionStart >= from.Value);
+            query = query.Where(s => s.SessionStart >= new DateTimeOffset(from.Value, TimeSpan.Zero));
         if (to.HasValue)
-            query = query.Where(s => s.SessionStart <= to.Value);
+            query = query.Where(s => s.SessionStart <= new DateTimeOffset(to.Value, TimeSpan.Zero));
 
         var totalCount = await query.CountAsync();
         var sessions = await query
@@ -139,8 +139,8 @@ public static class DataEndpoints
             s.Platform,
             s.OsVersion,
             s.IsFirstInstall,
-            SessionStart = ConvertTime(s.SessionStart, tz),
-            SessionEnd = ConvertTime(s.SessionEnd, tz),
+            SessionStart = ConvertTime(s.SessionStart.UtcDateTime, tz),
+            SessionEnd = ConvertTime(s.SessionEnd.UtcDateTime, tz),
             s.DurationMs,
             s.FeaturePath,
             s.FeatureCount,
@@ -178,9 +178,9 @@ public static class DataEndpoints
         }
 
         if (from.HasValue)
-            query = query.Where(s => s.SessionStart >= from.Value);
+            query = query.Where(s => s.SessionStart >= new DateTimeOffset(from.Value, TimeSpan.Zero));
         if (to.HasValue)
-            query = query.Where(s => s.SessionStart <= to.Value);
+            query = query.Where(s => s.SessionStart <= new DateTimeOffset(to.Value, TimeSpan.Zero));
 
         var totalCount = await query.CountAsync();
         var sessions = await query
@@ -199,8 +199,8 @@ public static class DataEndpoints
             s.OsVersion,
             s.DeviceHashType,
             s.IsFirstInstall,
-            SessionStart = ConvertTime(s.SessionStart, tz),
-            SessionEnd = ConvertTime(s.SessionEnd, tz),
+            SessionStart = ConvertTime(s.SessionStart.UtcDateTime, tz),
+            SessionEnd = ConvertTime(s.SessionEnd.UtcDateTime, tz),
             s.DurationMs,
             s.FeaturePath,
             s.FeatureCount,

@@ -14,5 +14,5 @@ public class ErrorEvent
     public string Message { get; set; } = string.Empty;
 
     [JsonPropertyName("timestamp")]
-    public DateTime Timestamp { get; set; }
+    public DateTimeOffset Timestamp { get; set; }
 }

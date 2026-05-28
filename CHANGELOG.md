@@ -20,6 +20,8 @@
 
 - Web timestamp field changed from DateTime to DateTimeOffset — fixes 400 rejection of SDK payloads with fractional-second ISO 8601 timestamps
 - Fixed page_path field name mismatch — server expected "page" but SDK sends "page_path", causing empty Page on all web events
+- Desktop/Mobile timestamp fields changed from DateTime to DateTimeOffset — fixes 400 rejection of SDK payloads with timezone offset timestamps (same fix previously applied to web)
+- Status code rewrite middleware excluded from `/api` routes — prevents API 404s from being intercepted by the Blazor not-found page
 - Fixed referrer classification — self-referrals (same site domain) now show as "Direct" instead of being hidden, null referrers show as "Unknown" instead of "Direct"
 - Timezone-aware aggregations — Dashboard and Analytics period boundaries (Today, This Week, etc.) now use the configured display timezone instead of UTC
 - Fixed Analytics duration chart — shows average session duration per page instead of per-page dwell time, which was incorrectly near-zero for single-page sessions

@@ -98,9 +98,9 @@ public partial class Dashboard : ComponentBase
         _recentSessions = recentWebEvents
             .Select(e => new RecentSession { SiteName = e.SiteName, Type = SiteType.Web, Platform = e.Browser ?? "Unknown", DurationMs = 0, SessionStart = e.Timestamp.UtcDateTime, IsFirstSeen = e.IsFirstVisit, Country = e.Country, Page = e.Page })
             .Concat(_desktopSessions.OrderByDescending(s => s.IngestedAt).Take(10)
-                .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Desktop, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart, IsFirstSeen = s.IsFirstInstall }))
+                .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Desktop, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart.UtcDateTime, IsFirstSeen = s.IsFirstInstall }))
             .Concat(_mobileSessions.OrderByDescending(s => s.IngestedAt).Take(10)
-                .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Mobile, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart, IsFirstSeen = s.IsFirstInstall }))
+                .Select(s => new RecentSession { SiteName = s.AppName, Type = SiteType.Mobile, Platform = s.Platform, DurationMs = s.DurationMs, SessionStart = s.SessionStart.UtcDateTime, IsFirstSeen = s.IsFirstInstall }))
             .OrderByDescending(s => s.SessionStart)
             .Take(10)
             .ToList();

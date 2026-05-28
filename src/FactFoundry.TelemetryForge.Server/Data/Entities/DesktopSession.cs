@@ -53,12 +53,12 @@ public class DesktopSession
     /// <summary>
     /// When the session started.
     /// </summary>
-    public DateTime SessionStart { get; set; }
+    public DateTimeOffset SessionStart { get; set; }
 
     /// <summary>
     /// When the session ended.
     /// </summary>
-    public DateTime SessionEnd { get; set; }
+    public DateTimeOffset SessionEnd { get; set; }
 
     /// <summary>
     /// Session duration in milliseconds.

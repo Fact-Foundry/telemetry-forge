@@ -18,5 +18,5 @@ public class StoredErrorEvent
     /// <summary>
     /// When the error occurred.
     /// </summary>
-    public DateTime Timestamp { get; set; }
+    public DateTimeOffset Timestamp { get; set; }
 }

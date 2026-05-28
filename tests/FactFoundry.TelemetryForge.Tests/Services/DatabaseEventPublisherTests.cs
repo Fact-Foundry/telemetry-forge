@@ -92,11 +92,11 @@ public class DatabaseEventPublisherTests
             SessionId = "session-uuid-1",
             Sequence = 0,
             IsFirstInstall = true,
-            SessionStart = DateTime.UtcNow.AddMinutes(-10),
-            SessionEnd = DateTime.UtcNow,
+            SessionStart = DateTimeOffset.UtcNow.AddMinutes(-10),
+            SessionEnd = DateTimeOffset.UtcNow,
             DurationMs = 600000,
             FeaturePath = ["ModelEditor", "Export"],
-            ErrorEvents = [new ErrorEvent { Feature = "Export", Message = "Timeout", Timestamp = DateTime.UtcNow }]
+            ErrorEvents = [new ErrorEvent { Feature = "Export", Message = "Timeout", Timestamp = DateTimeOffset.UtcNow }]
         };
 
         await publisher.PublishAsync(desktopEvent);
@@ -128,8 +128,8 @@ public class DatabaseEventPublisherTests
             SessionId = sessionId,
             Sequence = 0,
             IsFirstInstall = false,
-            SessionStart = DateTime.UtcNow.AddMinutes(-30),
-            SessionEnd = DateTime.UtcNow.AddMinutes(-15),
+            SessionStart = DateTimeOffset.UtcNow.AddMinutes(-30),
+            SessionEnd = DateTimeOffset.UtcNow.AddMinutes(-15),
             DurationMs = 900000,
             FeaturePath = ["ModelEditor"],
             ErrorEvents = []
@@ -148,11 +148,11 @@ public class DatabaseEventPublisherTests
             SessionId = sessionId,
             Sequence = 1,
             IsFirstInstall = false,
-            SessionStart = DateTime.UtcNow.AddMinutes(-30),
-            SessionEnd = DateTime.UtcNow,
+            SessionStart = DateTimeOffset.UtcNow.AddMinutes(-30),
+            SessionEnd = DateTimeOffset.UtcNow,
             DurationMs = 1800000,
             FeaturePath = ["Export", "Settings"],
-            ErrorEvents = [new ErrorEvent { Feature = "Export", Message = "Failed", Timestamp = DateTime.UtcNow }]
+            ErrorEvents = [new ErrorEvent { Feature = "Export", Message = "Failed", Timestamp = DateTimeOffset.UtcNow }]
         };
 
         await publisher.PublishAsync(second);
@@ -185,8 +185,8 @@ public class DatabaseEventPublisherTests
             SessionId = "mobile-session-1",
             Sequence = 0,
             IsFirstInstall = false,
-            SessionStart = DateTime.UtcNow.AddMinutes(-3),
-            SessionEnd = DateTime.UtcNow,
+            SessionStart = DateTimeOffset.UtcNow.AddMinutes(-3),
+            SessionEnd = DateTimeOffset.UtcNow,
             DurationMs = 180000,
             FeaturePath = ["Dashboard", "Scanner"],
             ErrorEvents = []
@@ -223,8 +223,8 @@ public class DatabaseEventPublisherTests
             SessionId = sessionId,
             Sequence = 0,
             IsFirstInstall = false,
-            SessionStart = DateTime.UtcNow.AddMinutes(-30),
-            SessionEnd = DateTime.UtcNow.AddMinutes(-15),
+            SessionStart = DateTimeOffset.UtcNow.AddMinutes(-30),
+            SessionEnd = DateTimeOffset.UtcNow.AddMinutes(-15),
             DurationMs = 900000,
             FeaturePath = ["Dashboard"],
             ErrorEvents = []
@@ -242,8 +242,8 @@ public class DatabaseEventPublisherTests
             SessionId = sessionId,
             Sequence = 1,
             IsFirstInstall = false,
-            SessionStart = DateTime.UtcNow.AddMinutes(-30),
-            SessionEnd = DateTime.UtcNow,
+            SessionStart = DateTimeOffset.UtcNow.AddMinutes(-30),
+            SessionEnd = DateTimeOffset.UtcNow,
             DurationMs = 1800000,
             FeaturePath = ["Scanner"],
             ErrorEvents = []

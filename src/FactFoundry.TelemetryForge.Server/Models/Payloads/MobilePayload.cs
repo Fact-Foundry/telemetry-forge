@@ -38,10 +38,10 @@ public class MobilePayload
     public int Sequence { get; set; }
 
     [JsonPropertyName("session_start")]
-    public DateTime SessionStart { get; set; }
+    public DateTimeOffset SessionStart { get; set; }
 
     [JsonPropertyName("session_end")]
-    public DateTime SessionEnd { get; set; }
+    public DateTimeOffset SessionEnd { get; set; }
 
     [JsonPropertyName("duration_ms")]
     public int DurationMs { get; set; }
