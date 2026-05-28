@@ -31,6 +31,15 @@
             <MudSelectItem T="string" Value="@site.Id">@site.Name</MudSelectItem>
         }
     </MudSelect>
+    <MudSelect T="string" Value="_selectedOs" ValueChanged="OnOsChanged"
+               Variant="Variant.Outlined" Dense="true" Style="max-width:200px;" Immediate="true" Margin="Margin.Dense"
+               Label="OS">
+        <MudSelectItem T="string" Value="@("")">All OS</MudSelectItem>
+        @foreach (var os in _osOptions)
+        {
+            <MudSelectItem T="string" Value="@os">@os</MudSelectItem>
+        }
+    </MudSelect>
 </MudStack>
 
 @if (!_loaded)

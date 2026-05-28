@@ -33,6 +33,7 @@ The server now supports session upsert via `session_id` + `sequence` fields, all
 ## Security Page
 
 - **Disable bot scan button** — allow admins to toggle the "Scan for Bots" button on/off from the Security page (e.g., a setting to disable retroactive scanning when not needed)
+- **Known IP exclusion** — allow admins to enter their own IP addresses in the portal. Traffic from known IPs is tagged as "Known" so it can be excluded from dashboard counts, analytics charts, and reports (e.g., filter out your own browsing while developing)
 
 ### Mobile Package — Heartbeat Support
 

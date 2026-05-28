@@ -19,10 +19,12 @@ public partial class Analytics : ComponentBase
 
     private string _period = "Last 7 Days";
     private string _selectedSiteId = "";
+    private string _selectedOs = "";
     private bool _loaded;
     private TimeZoneInfo _tz = TimeZoneInfo.Utc;
 
     private List<Site> _sites = [];
+    private List<string> _osOptions = [];
     private Dictionary<string, string?> _siteDomains = new();
 
     private ChartData _pageChart = new();
@@ -63,6 +65,12 @@ public partial class Analytics : ComponentBase
         await LoadCharts();
     }
 
+    private async Task OnOsChanged(string os)
+    {
+        _selectedOs = os;
+        await LoadCharts();
+    }
+
     private async Task LoadCharts()
     {
         var (from, to) = GetDateRange();
@@ -79,7 +87,7 @@ public partial class Analytics : ComponentBase
         if (!string.IsNullOrEmpty(_selectedSiteId))
             query = query.Where(e => e.SiteId == _selectedSiteId);
 
-        var events = await query
+        var allEvents = await query
             .Select(e => new EventProjection
             {
                 IngestedAt = e.IngestedAt,
@@ -93,6 +101,16 @@ public partial class Analytics : ComponentBase
                 DeviceType = e.DeviceType
             })
             .ToListAsync();
+
+        _osOptions = allEvents
+            .Select(e => e.Os ?? "Unknown")
+            .Distinct()
+            .OrderBy(o => o)
+            .ToList();
+
+        var events = allEvents;
+        if (!string.IsNullOrEmpty(_selectedOs))
+            events = events.Where(e => (e.Os ?? "Unknown") == _selectedOs).ToList();
 
         foreach (var e in events)
             e.LocalDate = TimeZoneInfo.ConvertTimeFromUtc(e.IngestedAt, _tz).Date;
@@ -145,6 +163,9 @@ public partial class Analytics : ComponentBase
 
         if (!string.IsNullOrEmpty(_selectedSiteId))
             query = query.Where(e => e.SiteId == _selectedSiteId);
+
+        if (!string.IsNullOrEmpty(_selectedOs))
+            query = query.Where(e => e.Os == _selectedOs);
 
         var rawEvents = await query
             .Select(e => new { e.SessionHash, e.Page, e.EventType, e.Timestamp, e.IngestedAt })
