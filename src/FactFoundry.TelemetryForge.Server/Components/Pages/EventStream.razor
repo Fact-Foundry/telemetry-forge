@@ -61,6 +61,7 @@ else
             <MudTh Style="width:90px">Visitor</MudTh>
             <MudTh>Page / Feature</MudTh>
             <MudTh Style="width:80px">Session</MudTh>
+            <MudTh Style="width:70px">Duration</MudTh>
             <MudTh Style="width:60px">Country</MudTh>
             <MudTh Style="width:130px">Time</MudTh>
         </HeaderContent>
@@ -112,6 +113,7 @@ else
                 </div>
             </MudTd>
             <MudTd Style="font-family:monospace;font-size:0.8rem;">@(context.SessionHash is not null ? context.SessionHash[..Math.Min(8, context.SessionHash.Length)] : "—")</MudTd>
+            <MudTd>@FormatDuration(context.DurationMs)</MudTd>
             <MudTd>@(context.Country ?? "—")</MudTd>
             <MudTd Style="white-space:nowrap;">@FormatTime(context.Timestamp)</MudTd>
         </RowTemplate>
@@ -119,7 +121,7 @@ else
             @if (context.Expanded)
             {
                 <MudTr>
-                    <td colspan="9">
+                    <td colspan="10">
                         <MudPaper Class="pa-2 ma-1" Elevation="0" Outlined="true" Style="word-break:break-all;">
                             <MudGrid Spacing="1">
                                 @if (context.SourceType == "Web")

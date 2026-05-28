@@ -15,7 +15,7 @@ public partial class Analytics : ComponentBase
     [Inject] private TelemetryForgeDbContext Db { get; set; } = default!;
     [Inject] private AuthService AuthService { get; set; } = default!;
 
-    private const int MaxSeries = 5;
+    private const int MaxSeries = 10;
 
     private string _period = "Last 7 Days";
     private string _selectedSiteId = "";
@@ -27,6 +27,7 @@ public partial class Analytics : ComponentBase
 
     private ChartData _pageChart = new();
     private ChartData _countryChart = new();
+    private ChartData _durationChart = new();
     private ChartData _referrerChart = new();
 
     private readonly LineChartOptions _lineOptions = new() { YAxisTicks = 10 };
@@ -61,12 +62,15 @@ public partial class Analytics : ComponentBase
     private async Task LoadCharts()
     {
         var (from, to) = GetDateRange();
-        var dates = Enumerable.Range(0, (to.Date - from.Date).Days + 1)
-            .Select(i => from.Date.AddDays(i))
+        var localFrom = TimeZoneInfo.ConvertTimeFromUtc(from, _tz).Date;
+        var localTo = TimeZoneInfo.ConvertTimeFromUtc(to, _tz).Date;
+        var queryEnd = TimeZoneInfo.ConvertTimeToUtc(localTo.AddDays(1), _tz);
+        var dates = Enumerable.Range(0, (localTo - localFrom).Days + 1)
+            .Select(i => localFrom.AddDays(i))
             .ToList();
 
         var query = Db.WebEvents.AsNoTracking()
-            .Where(e => e.IngestedAt >= from && e.IngestedAt < to.AddDays(1) && !e.IsBot && e.EventType == "page_view");
+            .Where(e => e.IngestedAt >= from && e.IngestedAt < queryEnd && !e.IsBot && e.EventType == "page_view");
 
         if (!string.IsNullOrEmpty(_selectedSiteId))
             query = query.Where(e => e.SiteId == _selectedSiteId);
@@ -83,10 +87,14 @@ public partial class Analytics : ComponentBase
             })
             .ToListAsync();
 
-        var labels = dates.Select(FormatDateLabel).ToArray();
+        foreach (var e in events)
+            e.LocalDate = TimeZoneInfo.ConvertTimeFromUtc(e.IngestedAt, _tz).Date;
+
+        var labels = dates.Select(d => d.ToString("M/d")).ToArray();
 
         _pageChart = BuildChart(events, dates, labels, e => string.IsNullOrEmpty(e.Page) ? "/" : e.Page);
         _countryChart = BuildChart(events, dates, labels, e => e.Country ?? "Unknown");
+        _durationChart = await BuildDurationChartAsync(from, queryEnd, dates, labels);
         _referrerChart = BuildReferrerChart(events, dates, labels);
     }
 
@@ -97,7 +105,7 @@ public partial class Analytics : ComponentBase
         Func<EventProjection, string> dimensionSelector)
     {
         var grouped = events
-            .GroupBy(e => new { Dimension = dimensionSelector(e), Date = e.IngestedAt.Date })
+            .GroupBy(e => new { Dimension = dimensionSelector(e), Date = e.LocalDate })
             .GroupBy(g => g.Key.Dimension)
             .Select(g => new
             {
@@ -111,8 +119,63 @@ public partial class Analytics : ComponentBase
 
         var series = grouped.Select(d => new ChartSeries<double>
         {
-            Name = Truncate(d.Dimension, 30),
+            Name = Truncate(d.Dimension),
             Data = dates.Select(date => (double)d.ByDate.GetValueOrDefault(date, 0)).ToArray()
+        }).ToList();
+
+        return new ChartData { Series = series, Labels = labels };
+    }
+
+    private async Task<ChartData> BuildDurationChartAsync(
+        DateTime from, DateTime queryEnd, List<DateTime> dates, string[] labels)
+    {
+        var query = Db.WebEvents.AsNoTracking()
+            .Where(e => e.IngestedAt >= from && e.IngestedAt < queryEnd && !e.IsBot);
+
+        if (!string.IsNullOrEmpty(_selectedSiteId))
+            query = query.Where(e => e.SiteId == _selectedSiteId);
+
+        var rawEvents = await query
+            .Select(e => new { e.SessionHash, e.Page, e.EventType, e.Timestamp, e.IngestedAt })
+            .ToListAsync();
+
+        var sessionDurations = rawEvents
+            .GroupBy(e => e.SessionHash)
+            .ToDictionary(
+                g => g.Key,
+                g => (g.Max(e => e.Timestamp) - g.Min(e => e.Timestamp)).TotalSeconds);
+
+        var pageSessionData = rawEvents
+            .Where(e => e.EventType == "page_view")
+            .Select(e => new
+            {
+                Page = string.IsNullOrEmpty(e.Page) ? "/" : e.Page,
+                LocalDate = TimeZoneInfo.ConvertTimeFromUtc(e.IngestedAt, _tz).Date,
+                e.SessionHash,
+                Duration = sessionDurations.GetValueOrDefault(e.SessionHash, 0)
+            })
+            .Where(x => x.Duration > 0)
+            .GroupBy(x => new { x.Page, x.SessionHash })
+            .Select(g => g.First())
+            .ToList();
+
+        var grouped = pageSessionData
+            .GroupBy(x => new { x.Page, x.LocalDate })
+            .GroupBy(g => g.Key.Page)
+            .Select(g => new
+            {
+                Page = g.Key,
+                Total = g.Sum(d => d.Count()),
+                ByDate = g.ToDictionary(d => d.Key.LocalDate, d => Math.Round(d.Average(x => x.Duration), 1))
+            })
+            .OrderByDescending(g => g.Total)
+            .Take(MaxSeries)
+            .ToList();
+
+        var series = grouped.Select(d => new ChartSeries<double>
+        {
+            Name = Truncate(d.Page),
+            Data = dates.Select(date => d.ByDate.GetValueOrDefault(date, 0)).ToArray()
         }).ToList();
 
         return new ChartData { Series = series, Labels = labels };
@@ -123,21 +186,23 @@ public partial class Analytics : ComponentBase
         List<DateTime> dates,
         string[] labels)
     {
-        var withReferrer = events
-            .Where(e => !string.IsNullOrEmpty(e.Referrer))
-            .Select(e => new
+        var classified = events
+            .Select(e =>
             {
-                e.SessionHash,
-                e.IngestedAt,
-                ReferrerDomain = ExtractDomain(e.Referrer!),
-                SiteDomain = _siteDomains.GetValueOrDefault(e.SiteId)
+                if (string.IsNullOrEmpty(e.Referrer))
+                    return new { e.SessionHash, e.LocalDate, ReferrerDomain = "Direct", IsSelf = false };
+
+                var domain = ExtractDomain(e.Referrer);
+                var siteDomain = _siteDomains.GetValueOrDefault(e.SiteId);
+                var isSelf = domain != null && IsSelfReferral(domain, siteDomain);
+                return new { e.SessionHash, e.LocalDate, ReferrerDomain = domain ?? "Direct", IsSelf = isSelf };
             })
-            .Where(e => e.ReferrerDomain != null && !IsSelfReferral(e.ReferrerDomain, e.SiteDomain))
+            .Where(e => !e.IsSelf)
             .ToList();
 
-        var grouped = withReferrer
-            .GroupBy(e => new { e.ReferrerDomain, Date = e.IngestedAt.Date })
-            .GroupBy(g => g.Key.ReferrerDomain!)
+        var grouped = classified
+            .GroupBy(e => new { e.ReferrerDomain, Date = e.LocalDate })
+            .GroupBy(g => g.Key.ReferrerDomain)
             .Select(g => new
             {
                 Dimension = g.Key,
@@ -150,7 +215,7 @@ public partial class Analytics : ComponentBase
 
         var series = grouped.Select(d => new ChartSeries<double>
         {
-            Name = Truncate(d.Dimension, 30),
+            Name = Truncate(d.Dimension),
             Data = dates.Select(date => (double)d.ByDate.GetValueOrDefault(date, 0)).ToArray()
         }).ToList();
 
@@ -159,18 +224,16 @@ public partial class Analytics : ComponentBase
 
     private (DateTime from, DateTime to) GetDateRange()
     {
-        var now = DateTime.UtcNow;
-        return _period switch
+        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _tz);
+        var (localFrom, localTo) = _period switch
         {
-            "Today" => (now.Date, now.Date),
-            "Last 7 Days" => (now.Date.AddDays(-6), now.Date),
-            "Last 30 Days" => (now.Date.AddDays(-29), now.Date),
-            _ => (now.Date.AddDays(-6), now.Date)
+            "Today" => (nowLocal.Date, nowLocal.Date),
+            "Last 7 Days" => (nowLocal.Date.AddDays(-6), nowLocal.Date),
+            "Last 30 Days" => (nowLocal.Date.AddDays(-29), nowLocal.Date),
+            _ => (nowLocal.Date.AddDays(-6), nowLocal.Date)
         };
+        return (TimeZoneInfo.ConvertTimeToUtc(localFrom, _tz), TimeZoneInfo.ConvertTimeToUtc(localTo, _tz));
     }
-
-    private string FormatDateLabel(DateTime date) =>
-        TimeZoneInfo.ConvertTimeFromUtc(date, _tz).ToString("M/d");
 
     private static string? ExtractDomain(string url)
     {
@@ -187,12 +250,13 @@ public partial class Analytics : ComponentBase
                || referrerDomain.EndsWith("." + siteDomain, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string Truncate(string value, int maxLength) =>
+    private static string Truncate(string value, int maxLength = 60) =>
         value.Length <= maxLength ? value : value[..(maxLength - 1)] + "…";
 
     private class EventProjection
     {
         public DateTime IngestedAt { get; set; }
+        public DateTime LocalDate { get; set; }
         public string SessionHash { get; set; } = string.Empty;
         public string Page { get; set; } = string.Empty;
         public string? Country { get; set; }

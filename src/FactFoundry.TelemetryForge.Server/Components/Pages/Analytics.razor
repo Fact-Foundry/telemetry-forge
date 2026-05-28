@@ -69,6 +69,20 @@ else
         </MudPaper>
 
         <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-2">Avg Session Duration (seconds)</MudText>
+            @if (_durationChart.Series.Count > 0)
+            {
+                <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_durationChart.Series"
+                          ChartLabels="_durationChart.Labels" Width="100%" Height="350px"
+                          LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No session duration data for this period.</MudText>
+            }
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Elevation="1">
             <MudText Typo="Typo.h6" Class="mb-2">Sessions by Referrer</MudText>
             @if (_referrerChart.Series.Count > 0)
             {

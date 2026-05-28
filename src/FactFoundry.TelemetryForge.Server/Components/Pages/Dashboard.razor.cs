@@ -20,6 +20,7 @@ public partial class Dashboard : ComponentBase
     private int _today;
     private int _thisWeek;
     private int _thisMonth;
+    private string _avgDuration = "—";
     private string _sitePeriod = "Today";
     private List<SiteSummary> _sites = [];
     private List<RecentSession> _recentSessions = [];
@@ -29,6 +30,7 @@ public partial class Dashboard : ComponentBase
     private List<Site> _allSites = [];
     private List<DesktopSession> _desktopSessions = [];
     private List<MobileSession> _mobileSessions = [];
+    private List<WebSession> _webSessions = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -39,11 +41,12 @@ public partial class Dashboard : ComponentBase
             catch (TimeZoneNotFoundException) { }
         }
 
-        var now = DateTime.UtcNow;
-        var todayStart = now.Date;
-        var weekStart = todayStart.AddDays(-(int)todayStart.DayOfWeek);
-        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var activeWindow = (DateTimeOffset)now.AddMinutes(-5);
+        var nowUtc = DateTime.UtcNow;
+        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, _tz);
+        var todayStart = TimeZoneInfo.ConvertTimeToUtc(nowLocal.Date, _tz);
+        var weekStart = TimeZoneInfo.ConvertTimeToUtc(nowLocal.Date.AddDays(-(int)nowLocal.DayOfWeek), _tz);
+        var monthStart = TimeZoneInfo.ConvertTimeToUtc(new DateTime(nowLocal.Year, nowLocal.Month, 1), _tz);
+        var activeWindow = (DateTimeOffset)nowUtc.AddMinutes(-5);
 
         _activeNow = await Db.WebEvents
             .Where(e => e.Timestamp >= activeWindow && !e.IsBot)
@@ -65,6 +68,7 @@ public partial class Dashboard : ComponentBase
 
         _desktopSessions = await Db.DesktopSessions.AsNoTracking().ToListAsync();
         _mobileSessions = await Db.MobileSessions.AsNoTracking().ToListAsync();
+        _webSessions = await Db.WebSessions.AsNoTracking().ToListAsync();
 
         var allTimes = _sessionData.Select(s => s.IngestedAt)
             .Concat(_desktopSessions.Select(s => s.IngestedAt))
@@ -74,6 +78,12 @@ public partial class Dashboard : ComponentBase
         _today = allTimes.Count(t => t >= todayStart);
         _thisWeek = allTimes.Count(t => t >= weekStart);
         _thisMonth = allTimes.Count(t => t >= monthStart);
+
+        var avgMs = await Db.WebSessions.AsNoTracking()
+            .Where(s => s.SessionStart >= weekStart && s.DurationMs > 0)
+            .Select(s => (double?)s.DurationMs)
+            .AverageAsync() ?? 0;
+        _avgDuration = FormatDuration((int)avgMs);
 
         _allSites = await Db.Sites.AsNoTracking().ToListAsync();
 
@@ -108,6 +118,15 @@ public partial class Dashboard : ComponentBase
 
             var bots = _botData.Count(b => b.SiteId == site.Id && b.IngestedAt >= cutoff);
 
+            var durationSources = _webSessions
+                .Where(s => s.SiteId == site.Id && s.IngestedAt >= cutoff && s.DurationMs > 0)
+                .Select(s => s.DurationMs)
+                .Concat(_desktopSessions.Where(s => s.SiteId == site.Id && s.IngestedAt >= cutoff && s.DurationMs > 0).Select(s => s.DurationMs))
+                .Concat(_mobileSessions.Where(s => s.SiteId == site.Id && s.IngestedAt >= cutoff && s.DurationMs > 0).Select(s => s.DurationMs))
+                .ToList();
+
+            var avgDurationMs = durationSources.Count > 0 ? (int)durationSources.Average() : 0;
+
             return new SiteSummary
             {
                 SiteId = site.Id,
@@ -115,6 +134,7 @@ public partial class Dashboard : ComponentBase
                 Type = site.Type,
                 Sessions = sessions,
                 Bots = bots,
+                AvgDurationMs = avgDurationMs,
                 LastPayloadAt = site.LastPayloadAt
             };
         }).ToList();
@@ -126,18 +146,19 @@ public partial class Dashboard : ComponentBase
         BuildSiteSummaries();
     }
 
-    private static DateTime GetPeriodCutoff(string period)
+    private DateTime GetPeriodCutoff(string period)
     {
-        var now = DateTime.UtcNow;
-        return period switch
+        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _tz);
+        var localDate = period switch
         {
-            "Today" => now.Date,
-            "This Week" => now.Date.AddDays(-(int)now.DayOfWeek),
-            "Last 30 Days" => now.Date.AddDays(-30),
-            "Last 90 Days" => now.Date.AddDays(-90),
-            "Last Year" => now.Date.AddYears(-1),
-            _ => now.Date
+            "Today" => nowLocal.Date,
+            "This Week" => nowLocal.Date.AddDays(-(int)nowLocal.DayOfWeek),
+            "Last 30 Days" => nowLocal.Date.AddDays(-30),
+            "Last 90 Days" => nowLocal.Date.AddDays(-90),
+            "Last Year" => nowLocal.Date.AddYears(-1),
+            _ => nowLocal.Date
         };
+        return TimeZoneInfo.ConvertTimeToUtc(localDate, _tz);
     }
 
     private static Color GetTypeColor(SiteType type) => type switch
@@ -182,6 +203,7 @@ public partial class Dashboard : ComponentBase
         public int Sessions { get; set; }
         public int Bots { get; set; }
         public int Total => Sessions + Bots;
+        public int AvgDurationMs { get; set; }
         public DateTime? LastPayloadAt { get; set; }
     }
 

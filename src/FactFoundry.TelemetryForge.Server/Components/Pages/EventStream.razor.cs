@@ -57,6 +57,14 @@ public partial class EventStream : ComponentBase
                 webQuery = webQuery.Where(e => e.SiteId == _siteFilter);
 
             var webEvents = await webQuery.OrderByDescending(e => e.Timestamp).Take(100).ToListAsync();
+
+            var sessionHashes = webEvents.Select(e => e.SessionHash).Distinct().ToList();
+            var sessionDurations = await Db.WebEvents.AsNoTracking()
+                .Where(e => sessionHashes.Contains(e.SessionHash))
+                .GroupBy(e => e.SessionHash)
+                .Select(g => new { SessionHash = g.Key, MinTs = g.Min(e => e.Timestamp), MaxTs = g.Max(e => e.Timestamp) })
+                .ToDictionaryAsync(g => g.SessionHash, g => (int)(g.MaxTs - g.MinTs).TotalMilliseconds);
+
             events.AddRange(webEvents.Select(e => new EventRow
             {
                 Id = e.Id,
@@ -80,6 +88,7 @@ public partial class EventStream : ComponentBase
                 Os = e.Os,
                 DeviceType = e.DeviceType,
                 SessionHash = e.SessionHash,
+                DurationMs = sessionDurations.GetValueOrDefault(e.SessionHash, 0),
             }));
         }
 

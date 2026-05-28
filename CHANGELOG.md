@@ -15,11 +15,15 @@
 
 - Web timestamp field changed from DateTime to DateTimeOffset — fixes 400 rejection of SDK payloads with fractional-second ISO 8601 timestamps
 - Fixed page_path field name mismatch — server expected "page" but SDK sends "page_path", causing empty Page on all web events
+- Timezone-aware aggregations — Dashboard and Analytics period boundaries (Today, This Week, etc.) now use the configured display timezone instead of UTC
+- Fixed Analytics duration chart — shows average session duration per page instead of per-page dwell time, which was incorrectly near-zero for single-page sessions
 
 ### UI Improvements
 
-- Analytics page — line charts for sessions by page, country, and referrer over selectable periods (Today, 7 Days, 30 Days) with site filter
+- Analytics page — line charts for sessions by page, country, avg session duration, and referrer over selectable periods (Today, 7 Days, 30 Days) with site filter
 - Domain field on Sites — used to filter self-referrals from the referrer chart (e.g. kevinoftech.com won't appear as a referrer for its own site)
+- Dashboard "Avg Session Duration" card — shows average duration across web sessions this week
+- Event Stream Duration column — shows computed session duration (time between first and last event in the session)
 - Added Country column to Event Stream table
 - Dashboard Sites & Apps table — period dropdown (Today, This Week, Last 30 Days, Last 90 Days, Last Year) with Sessions, Bots, and Total columns
 - Added `circuit_open` event type to Event Stream color mapping

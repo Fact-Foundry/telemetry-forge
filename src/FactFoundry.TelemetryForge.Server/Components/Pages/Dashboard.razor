@@ -29,6 +29,12 @@
             <MudText Typo="Typo.h4">@_thisMonth</MudText>
         </MudPaper>
     </MudItem>
+    <MudItem xs="12" sm="3">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.subtitle2" Color="Color.Default">Avg Session Duration</MudText>
+            <MudText Typo="Typo.h4">@_avgDuration</MudText>
+        </MudPaper>
+    </MudItem>
 </MudGrid>
 
 @if (_sites.Count > 0)
@@ -52,6 +58,7 @@
             <MudTh Style="text-align:right">Sessions</MudTh>
             <MudTh Style="text-align:right">Bots</MudTh>
             <MudTh Style="text-align:right">Total</MudTh>
+            <MudTh Style="text-align:right">Avg Duration</MudTh>
             <MudTh>Last Received</MudTh>
         </HeaderContent>
         <RowTemplate>
@@ -63,6 +70,7 @@
             <MudTd Style="text-align:right">@context.Sessions</MudTd>
             <MudTd Style="text-align:right">@context.Bots</MudTd>
             <MudTd Style="text-align:right">@context.Total</MudTd>
+            <MudTd Style="text-align:right">@FormatDuration(context.AvgDurationMs)</MudTd>
             <MudTd>@FormatLastReceived(context.LastPayloadAt)</MudTd>
         </RowTemplate>
     </MudTable>
