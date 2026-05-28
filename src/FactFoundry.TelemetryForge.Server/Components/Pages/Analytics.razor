@@ -1,0 +1,85 @@
+@page "/analytics"
+
+<style>
+    .mud-chart.mud-chart-legend-right {
+        width: 100%;
+    }
+    .mud-chart.mud-chart-legend-right > svg {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+</style>
+
+<PageTitle>Analytics — TelemetryForge</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Analytics</MudText>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="2">
+    <MudSelect T="string" Value="_period" ValueChanged="OnPeriodChanged"
+               Variant="Variant.Outlined" Dense="true" Style="max-width:160px;" Immediate="true" Margin="Margin.Dense"
+               Label="Period">
+        <MudSelectItem T="string" Value="@("Today")">Today</MudSelectItem>
+        <MudSelectItem T="string" Value="@("Last 7 Days")">Last 7 Days</MudSelectItem>
+        <MudSelectItem T="string" Value="@("Last 30 Days")">Last 30 Days</MudSelectItem>
+    </MudSelect>
+    <MudSelect T="string" Value="_selectedSiteId" ValueChanged="OnSiteChanged"
+               Variant="Variant.Outlined" Dense="true" Style="max-width:250px;" Immediate="true" Margin="Margin.Dense"
+               Label="Site">
+        <MudSelectItem T="string" Value="@("")">All Sites</MudSelectItem>
+        @foreach (var site in _sites)
+        {
+            <MudSelectItem T="string" Value="@site.Id">@site.Name</MudSelectItem>
+        }
+    </MudSelect>
+</MudStack>
+
+@if (!_loaded)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudStack Spacing="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-2">Sessions by Page</MudText>
+            @if (_pageChart.Series.Count > 0)
+            {
+                <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_pageChart.Series"
+                          ChartLabels="_pageChart.Labels" Width="100%" Height="350px"
+                          LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No page data for this period.</MudText>
+            }
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-2">Sessions by Country</MudText>
+            @if (_countryChart.Series.Count > 0)
+            {
+                <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_countryChart.Series"
+                          ChartLabels="_countryChart.Labels" Width="100%" Height="350px"
+                          LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No country data for this period.</MudText>
+            }
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" Class="mb-2">Sessions by Referrer</MudText>
+            @if (_referrerChart.Series.Count > 0)
+            {
+                <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_referrerChart.Series"
+                          ChartLabels="_referrerChart.Labels" Width="100%" Height="350px"
+                          LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">No referrer data for this period.</MudText>
+            }
+        </MudPaper>
+    </MudStack>
+}

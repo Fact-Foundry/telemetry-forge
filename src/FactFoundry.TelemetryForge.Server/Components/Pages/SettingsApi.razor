@@ -46,8 +46,8 @@
         <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
             <MudAutocomplete T="string" @bind-Value="_apiTimezone" Label="Timezone" Variant="Variant.Outlined"
                              SearchFunc="SearchTimezones" ToStringFunc="FormatTimezoneLabel"
-                             Immediate="true" Style="max-width:500px"
-                             MaxItems="20" CoerceText="true" CoerceValue="true" />
+                             Immediate="true" Style="max-width:500px" Dense="true"
+                             MaxItems="50" CoerceText="true" CoerceValue="true" />
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveApiTimezone"
                        Disabled="@(string.IsNullOrWhiteSpace(_apiTimezone))">
                 Save
@@ -153,11 +153,12 @@
 
     private Task<IEnumerable<string>> SearchTimezones(string? value, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        if (string.IsNullOrWhiteSpace(value) || AllTimezones.Any(tz => tz.Label == value))
             return Task.FromResult(AllTimezones.Select(tz => tz.Id));
 
         var results = AllTimezones
-            .Where(tz => tz.Label.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .Where(tz => tz.Label.Contains(value, StringComparison.OrdinalIgnoreCase)
+                         || tz.Id.Contains(value, StringComparison.OrdinalIgnoreCase))
             .Select(tz => tz.Id);
         return Task.FromResult(results);
     }

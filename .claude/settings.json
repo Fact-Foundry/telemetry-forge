@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -B2 -A10 \"\\\\\"T:MudBlazor.MudChart\\\\`1\\\\\"\" /home/kevin/.nuget/packages/mudblazor/9.4.0/lib/net10.0/MudBlazor.xml)",
+      "Bash(grep \"MudChart\\\\`1.*:.*MudChartBase\\\\|class MudChart\" /home/kevin/.nuget/packages/mudblazor/9.4.0/lib/net10.0/MudBlazor.xml)",
+      "Bash(grep -B2 -A8 \"\\\\\"P:MudBlazor.Charts.BaseAxisChart\\\\`2.ViewBoxWidth\\\\\"\\\\|\\\\\"P:MudBlazor.Charts.BaseAxisChart\\\\`2.ViewBoxHeight\\\\\"\" /home/kevin/.nuget/packages/mudblazor/9.4.0/lib/net10.0/MudBlazor.xml)",
+      "Bash(grep -B2 -A10 \"\\\\\"P:MudBlazor.Charts.BaseAxisChart\\\\`2.MatchBoundsToSize\\\\\"\" /home/kevin/.nuget/packages/mudblazor/9.4.0/lib/net10.0/MudBlazor.xml)",
+      "WebFetch(domain:mudblazor.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
