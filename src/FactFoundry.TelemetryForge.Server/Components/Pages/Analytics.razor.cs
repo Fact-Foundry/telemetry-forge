@@ -222,14 +222,16 @@ public partial class Analytics : ComponentBase
             .Select(e =>
             {
                 if (string.IsNullOrEmpty(e.Referrer))
-                    return new { e.SessionHash, e.LocalDate, ReferrerDomain = "Direct", IsSelf = false };
+                    return new { e.SessionHash, e.LocalDate, ReferrerDomain = "Unknown" };
 
                 var domain = ExtractDomain(e.Referrer);
                 var siteDomain = _siteDomains.GetValueOrDefault(e.SiteId);
                 var isSelf = domain != null && IsSelfReferral(domain, siteDomain);
-                return new { e.SessionHash, e.LocalDate, ReferrerDomain = domain ?? "Direct", IsSelf = isSelf };
+                if (isSelf)
+                    return new { e.SessionHash, e.LocalDate, ReferrerDomain = "Direct" };
+
+                return new { e.SessionHash, e.LocalDate, ReferrerDomain = domain ?? "Unknown" };
             })
-            .Where(e => !e.IsSelf)
             .ToList();
 
         var grouped = classified
