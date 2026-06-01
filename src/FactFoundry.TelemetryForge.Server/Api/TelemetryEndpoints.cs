@@ -35,6 +35,7 @@ public static class TelemetryEndpoints
         VisitorHashService visitorHashService,
         UserAgentParserService userAgentParser,
         GeoLocationService geoLocationService,
+        IpFilterService ipFilter,
         IEventPublisher publisher,
         ILogger<WebEventPayload> logger)
     {
@@ -45,6 +46,16 @@ public static class TelemetryEndpoints
             var site = await db.Sites.AsNoTracking().FirstOrDefaultAsync(s => s.Id == siteId);
             if (site is null)
                 return Results.Json(new { error = "Site not found." }, statusCode: 404);
+
+            // Drop traffic from admin-configured ignored IPs (e.g. the developer's own IP) so it
+            // never reaches the database or any report. The raw IP is not logged or persisted.
+            if (ipFilter.IsIgnored(payload.IpAddress))
+            {
+                logger.LogInformation(
+                    "Ignored web event from filtered IP for site {SiteId} (event {EventType} on {Page})",
+                    siteId, payload.EventType, payload.Page);
+                return Results.Accepted();
+            }
 
             var sessionHash = HashSessionIdentity(payload.SessionId, payload.IpAddress);
             var visitorSessionHash = HashVisitorSessionIdentity(payload.SessionId, payload.IpAddress);

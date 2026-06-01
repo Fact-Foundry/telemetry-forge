@@ -2,6 +2,7 @@
 @using FactFoundry.TelemetryForge.Server.Services
 @inject AuthService AuthService
 @inject GeoLocationService GeoLocationService
+@inject IpFilterService IpFilterService
 @inject ISnackbar Snackbar
 
 <PageTitle>General Settings — TelemetryForge</PageTitle>
@@ -46,6 +47,26 @@
                           Style="max-width:500px" />
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveGeoIpPath"
                        Disabled="@(string.IsNullOrWhiteSpace(_geoIpPath))">
+                Save
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @* ── Traffic Filtering ── *@
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-2">Traffic Filtering</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+            Web traffic from these IP addresses is dropped at ingestion — it is never stored and does not
+            appear in any report or the event stream (a line is written to the server log instead).
+            Use this to exclude your own traffic so it does not inflate analytics. One entry per line;
+            single IPv4/IPv6 addresses or CIDR ranges are supported (e.g. <code>203.0.113.7</code> or
+            <code>203.0.113.0/24</code>). Lines starting with <code>#</code> are treated as comments.
+        </MudText>
+        <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
+            <MudTextField @bind-Value="_ignoredIps" Label="Ignored IP Addresses" Variant="Variant.Outlined"
+                          Lines="4" Immediate="true" Placeholder="203.0.113.7&#10;203.0.113.0/24"
+                          Style="max-width:500px" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveIgnoredIps">
                 Save
             </MudButton>
         </MudStack>
@@ -105,6 +126,7 @@
 @code {
     private string _serverName = string.Empty;
     private string _geoIpPath = string.Empty;
+    private string _ignoredIps = string.Empty;
     private string _timezone = "UTC";
     private int _inactivityMinutes = 30;
     private int _retentionDays;
@@ -118,6 +140,7 @@
     {
         _serverName = await AuthService.GetServerSettingAsync("Server:Name") ?? string.Empty;
         _geoIpPath = await AuthService.GetServerSettingAsync("GeoIP:DatabasePath") ?? string.Empty;
+        _ignoredIps = await AuthService.GetServerSettingAsync(IpFilterService.SettingKey) ?? string.Empty;
         _timezone = await AuthService.GetServerSettingAsync("Display:Timezone") ?? "UTC";
 
         var inactivityValue = await AuthService.GetServerSettingAsync("Session:InactivityMinutes");
@@ -137,6 +160,27 @@
     {
         await AuthService.SaveServerSettingAsync("GeoIP:DatabasePath", _geoIpPath.Trim());
         Snackbar.Add("GeoIP database path saved. Restart the server to apply.", Severity.Success);
+    }
+
+    private async Task SaveIgnoredIps()
+    {
+        var entries = (_ignoredIps ?? string.Empty)
+            .Split(['\n', '\r', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(e => !e.StartsWith('#'))
+            .ToList();
+
+        var invalid = entries.Where(e => !CidrRange.TryParse(e, out _)).ToList();
+        if (invalid.Count > 0)
+        {
+            Snackbar.Add($"Invalid {(invalid.Count == 1 ? "entry" : "entries")}: {string.Join(", ", invalid)}", Severity.Error);
+            return;
+        }
+
+        await AuthService.SaveServerSettingAsync(IpFilterService.SettingKey, (_ignoredIps ?? string.Empty).Trim());
+        await IpFilterService.RefreshAsync();
+        Snackbar.Add(entries.Count == 0
+            ? "Ignored IP list cleared."
+            : $"Ignored IP list saved ({entries.Count} {(entries.Count == 1 ? "entry" : "entries")}).", Severity.Success);
     }
 
     private async Task SaveInactivityWindow()

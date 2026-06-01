@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.6]
+
+### Features
+
+- Ignored IPs setting (General) — drop web traffic from configured IP addresses or CIDR ranges at ingestion (never stored, excluded from all reports, logged); lets developers exclude their own traffic from analytics
+
 ## [1.1.3]
 
 ### Features

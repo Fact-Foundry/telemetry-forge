@@ -132,6 +132,7 @@ builder.Services.AddScoped<VisitorHashService>();
 builder.Services.AddScoped<BotDetectionService>();
 builder.Services.AddSingleton<UserAgentParserService>();
 builder.Services.AddSingleton<GeoLocationService>();
+builder.Services.AddSingleton<IpFilterService>();
 builder.Services.AddSingleton<LoggingEventPublisher>();
 builder.Services.AddScoped<DatabaseEventPublisher>();
 builder.Services.AddScoped<IEventPublisher>(sp =>
@@ -161,6 +162,9 @@ if (app.Environment.IsDevelopment())
     var db = scope.ServiceProvider.GetRequiredService<TelemetryForgeDbContext>();
     await db.Database.EnsureCreatedAsync();
 }
+
+// Load the ignored-IP filter rules into memory (failures are logged and non-fatal)
+await app.Services.GetRequiredService<IpFilterService>().RefreshAsync();
 
 if (!app.Environment.IsDevelopment())
 {

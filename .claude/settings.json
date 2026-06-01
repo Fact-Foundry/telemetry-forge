@@ -10,7 +10,10 @@
       "Bash(xargs -I {} sh -c 'strings {} 2>/dev/null | grep -i \"pie\\\\|donut\" | head -5')",
       "Bash(git -C /home/kevin/Repositories/FactFoundry/telemetry-forge diff --stat)",
       "Bash(git -C /home/kevin/Repositories/FactFoundry/telemetry-forge diff --stat HEAD -- ':!.claude')",
-      "Bash(git -C /home/kevin/Repositories/FactFoundry/telemetry-forge diff HEAD -- ':!.claude')"
+      "Bash(git -C /home/kevin/Repositories/FactFoundry/telemetry-forge diff HEAD -- ':!.claude')",
+      "Bash(sed -n '1,15p' src/FactFoundry.TelemetryForge.Desktop/DesktopSessionTracker.cs)",
+      "Bash(sed -n '95,115p' src/FactFoundry.TelemetryForge.Desktop/DesktopSessionTracker.cs)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }
