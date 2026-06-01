@@ -38,6 +38,9 @@ else
                         <MudNavLink Href="/sites" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dns">
                             Sites &amp; Apps
                         </MudNavLink>
+                        <MudNavLink Href="/sinks" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Output">
+                            Sinks
+                        </MudNavLink>
                         <MudNavLink Href="/events" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Timeline">
                             Event Stream
                         </MudNavLink>
@@ -46,9 +49,6 @@ else
                         </MudNavLink>
                         <MudNavLink Href="/security" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Shield">
                             Security
-                        </MudNavLink>
-                        <MudNavLink Href="/sinks" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Output">
-                            Sinks
                         </MudNavLink>
                         <MudNavGroup Title="Settings" Icon="@Icons.Material.Filled.Settings"
                                      Expanded="_settingsExpanded" ExpandedChanged="v => _settingsExpanded = v">
