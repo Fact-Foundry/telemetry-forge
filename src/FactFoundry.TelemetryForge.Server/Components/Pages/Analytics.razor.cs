@@ -3,7 +3,10 @@ using FactFoundry.TelemetryForge.Server.Data.Entities;
 using FactFoundry.TelemetryForge.Server.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop;
 using MudBlazor;
+using OoxSpreadsheet;
+using OslSpreadsheet.Models;
 
 namespace FactFoundry.TelemetryForge.Server.Components.Pages;
 
@@ -14,6 +17,7 @@ public partial class Analytics : ComponentBase
 {
     [Inject] private TelemetryForgeDbContext Db { get; set; } = default!;
     [Inject] private AuthService AuthService { get; set; } = default!;
+    [Inject] private IJSRuntime Js { get; set; } = default!;
 
     private const int MaxSeries = 10;
 
@@ -37,6 +41,14 @@ public partial class Analytics : ComponentBase
     private PieData _devicePie = new();
 
     private readonly LineChartOptions _lineOptions = new() { YAxisTicks = 10 };
+
+    // Page Breakdown tab
+    private string _breakdownPeriod = "Past Week";
+    private string _breakdownSiteId = "";
+    private bool _breakdownLoaded;
+    private bool _exporting;
+    private List<DateTime> _breakdownDates = [];
+    private List<PageBreakdownRow> _breakdownRows = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -69,6 +81,108 @@ public partial class Analytics : ComponentBase
     {
         _selectedOs = os;
         await LoadCharts();
+    }
+
+    private async Task OnTabActivated(int index)
+    {
+        // Lazily load the Page Breakdown tab (index 1) the first time it is opened.
+        if (index == 1 && !_breakdownLoaded)
+            await LoadBreakdown();
+    }
+
+    private async Task OnBreakdownPeriodChanged(string period)
+    {
+        _breakdownPeriod = period;
+        await LoadBreakdown();
+    }
+
+    private async Task OnBreakdownSiteChanged(string siteId)
+    {
+        _breakdownSiteId = siteId;
+        await LoadBreakdown();
+    }
+
+    private async Task LoadBreakdown()
+    {
+        var (from, to, dates) = GetBreakdownRange();
+        _breakdownDates = dates;
+
+        var query = Db.WebEvents.AsNoTracking()
+            .Where(e => e.IngestedAt >= from && e.IngestedAt < to && !e.IsBot && e.EventType == "page_view");
+
+        if (!string.IsNullOrEmpty(_breakdownSiteId))
+            query = query.Where(e => e.SiteId == _breakdownSiteId);
+
+        var raw = await query
+            .Select(e => new { e.Page, e.Os, e.Browser, e.IngestedAt })
+            .ToListAsync();
+
+        var events = raw.Select(e => new PageBreakdownEvent(
+            e.Page, e.Os, e.Browser,
+            TimeZoneInfo.ConvertTimeFromUtc(e.IngestedAt, _tz).Date)).ToList();
+
+        _breakdownRows = PageBreakdownBuilder.Build(events, _breakdownDates).ToList();
+        _breakdownLoaded = true;
+    }
+
+    private (DateTime from, DateTime to, List<DateTime> dates) GetBreakdownRange()
+    {
+        var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _tz);
+        var days = _breakdownPeriod == "Past Month" ? 30 : 7;
+        var localFrom = nowLocal.Date.AddDays(-(days - 1));
+        var localTo = nowLocal.Date;
+
+        var dates = Enumerable.Range(0, (localTo - localFrom).Days + 1)
+            .Select(i => localFrom.AddDays(i))
+            .ToList();
+
+        var fromUtc = TimeZoneInfo.ConvertTimeToUtc(localFrom, _tz);
+        var toUtc = TimeZoneInfo.ConvertTimeToUtc(localTo.AddDays(1), _tz);
+        return (fromUtc, toUtc, dates);
+    }
+
+    private async Task ExportBreakdownXlsx()
+    {
+        _exporting = true;
+        try
+        {
+            await using var spreadsheet = new Spreadsheet();
+            var sheet = spreadsheet.Workbook.AddSheet("Page Breakdown");
+
+            // Header row (1-based rows/columns).
+            sheet.AddCell(1, 1, "Page");
+            sheet.AddCell(1, 2, "OS");
+            sheet.AddCell(1, 3, "Browser");
+            var col = 4;
+            foreach (var d in _breakdownDates)
+                sheet.AddCell(1, col++, d.ToString("yyyy-MM-dd"));
+            sheet.AddCell(1, col, "Total");
+
+            // Data rows.
+            var rowIndex = 2;
+            foreach (var r in _breakdownRows)
+            {
+                sheet.AddCell(rowIndex, 1, r.Page);
+                sheet.AddCell(rowIndex, 2, r.Os);
+                sheet.AddCell(rowIndex, 3, r.Browser);
+                col = 4;
+                foreach (var d in _breakdownDates)
+                    sheet.AddCell(rowIndex, col++, r.Counts.GetValueOrDefault(d, 0).ToString(), CellValueType.Int64);
+                sheet.AddCell(rowIndex, col, r.Total.ToString(), CellValueType.Int64);
+                rowIndex++;
+            }
+
+            var bytes = await spreadsheet.GenerateXlsxFileAsync();
+            var base64 = Convert.ToBase64String(bytes);
+            var fileName = $"page-breakdown-{DateTime.UtcNow:yyyyMMdd-HHmmss}.xlsx";
+            const string mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            await Js.InvokeVoidAsync("eval",
+                $"(() => {{ const a = document.createElement('a'); a.href = 'data:{mime};base64,{base64}'; a.download = '{fileName}'; a.click(); }})()");
+        }
+        finally
+        {
+            _exporting = false;
+        }
     }
 
     private async Task LoadCharts()

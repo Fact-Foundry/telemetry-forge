@@ -8,150 +8,234 @@
         flex: 1 1 0;
         min-width: 0;
     }
+    .breakdown-table th, .breakdown-table td {
+        white-space: nowrap;
+    }
+    .breakdown-table td.num, .breakdown-table th.num {
+        text-align: right;
+    }
 </style>
 
 <PageTitle>Analytics — TelemetryForge</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">Analytics</MudText>
 
-<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="2">
-    <MudSelect T="string" Value="_period" ValueChanged="OnPeriodChanged"
-               Variant="Variant.Outlined" Dense="true" Style="max-width:160px;" Immediate="true" Margin="Margin.Dense"
-               Label="Period">
-        <MudSelectItem T="string" Value="@("Today")">Today</MudSelectItem>
-        <MudSelectItem T="string" Value="@("Last 7 Days")">Last 7 Days</MudSelectItem>
-        <MudSelectItem T="string" Value="@("Last 30 Days")">Last 30 Days</MudSelectItem>
-    </MudSelect>
-    <MudSelect T="string" Value="_selectedSiteId" ValueChanged="OnSiteChanged"
-               Variant="Variant.Outlined" Dense="true" Style="max-width:250px;" Immediate="true" Margin="Margin.Dense"
-               Label="Site">
-        <MudSelectItem T="string" Value="@("")">All Sites</MudSelectItem>
-        @foreach (var site in _sites)
+<MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true"
+         ActivePanelIndexChanged="OnTabActivated" Class="mt-2">
+    <MudTabPanel Text="Charts">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="2">
+            <MudSelect T="string" Value="_period" ValueChanged="OnPeriodChanged"
+                       Variant="Variant.Outlined" Dense="true" Style="max-width:160px;" Immediate="true" Margin="Margin.Dense"
+                       Label="Period">
+                <MudSelectItem T="string" Value="@("Today")">Today</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Last 7 Days")">Last 7 Days</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Last 30 Days")">Last 30 Days</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="string" Value="_selectedSiteId" ValueChanged="OnSiteChanged"
+                       Variant="Variant.Outlined" Dense="true" Style="max-width:250px;" Immediate="true" Margin="Margin.Dense"
+                       Label="Site">
+                <MudSelectItem T="string" Value="@("")">All Sites</MudSelectItem>
+                @foreach (var site in _sites)
+                {
+                    <MudSelectItem T="string" Value="@site.Id">@site.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" Value="_selectedOs" ValueChanged="OnOsChanged"
+                       Variant="Variant.Outlined" Dense="true" Style="max-width:200px;" Immediate="true" Margin="Margin.Dense"
+                       Label="OS">
+                <MudSelectItem T="string" Value="@("")">All OS</MudSelectItem>
+                @foreach (var os in _osOptions)
+                {
+                    <MudSelectItem T="string" Value="@os">@os</MudSelectItem>
+                }
+            </MudSelect>
+        </MudStack>
+
+        @if (!_loaded)
         {
-            <MudSelectItem T="string" Value="@site.Id">@site.Name</MudSelectItem>
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
         }
-    </MudSelect>
-    <MudSelect T="string" Value="_selectedOs" ValueChanged="OnOsChanged"
-               Variant="Variant.Outlined" Dense="true" Style="max-width:200px;" Immediate="true" Margin="Margin.Dense"
-               Label="OS">
-        <MudSelectItem T="string" Value="@("")">All OS</MudSelectItem>
-        @foreach (var os in _osOptions)
+        else
         {
-            <MudSelectItem T="string" Value="@os">@os</MudSelectItem>
+            <MudStack Spacing="4">
+                <MudGrid>
+                    <MudItem xs="12" md="4" Style="display:flex">
+                        <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
+                            <MudText Typo="Typo.h6" Class="mb-2">Sessions by Browser</MudText>
+                            @if (_browserPie.Labels.Length > 0)
+                            {
+                                <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_browserPie.Series"
+                                          ChartLabels="_browserPie.Labels" Width="100%" Height="300px"
+                                          LegendPosition="Position.Bottom" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Default">No browser data for this period.</MudText>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="4" Style="display:flex">
+                        <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
+                            <MudText Typo="Typo.h6" Class="mb-2">Sessions by OS</MudText>
+                            @if (_osPie.Labels.Length > 0)
+                            {
+                                <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_osPie.Series"
+                                          ChartLabels="_osPie.Labels" Width="100%" Height="300px"
+                                          LegendPosition="Position.Bottom" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Default">No OS data for this period.</MudText>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="4" Style="display:flex">
+                        <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
+                            <MudText Typo="Typo.h6" Class="mb-2">Sessions by Device Type</MudText>
+                            @if (_devicePie.Labels.Length > 0)
+                            {
+                                <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_devicePie.Series"
+                                          ChartLabels="_devicePie.Labels" Width="100%" Height="300px"
+                                          LegendPosition="Position.Bottom" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Default">No device data for this period.</MudText>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by Page</MudText>
+                    @if (_pageChart.Series.Count > 0)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_pageChart.Series"
+                                  ChartLabels="_pageChart.Labels" Width="100%" Height="350px"
+                                  LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">No page data for this period.</MudText>
+                    }
+                </MudPaper>
+
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by Country</MudText>
+                    @if (_countryChart.Series.Count > 0)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_countryChart.Series"
+                                  ChartLabels="_countryChart.Labels" Width="100%" Height="350px"
+                                  LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">No country data for this period.</MudText>
+                    }
+                </MudPaper>
+
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Avg Session Duration (seconds)</MudText>
+                    @if (_durationChart.Series.Count > 0)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_durationChart.Series"
+                                  ChartLabels="_durationChart.Labels" Width="100%" Height="350px"
+                                  LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">No session duration data for this period.</MudText>
+                    }
+                </MudPaper>
+
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by Referrer</MudText>
+                    @if (_referrerChart.Series.Count > 0)
+                    {
+                        <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_referrerChart.Series"
+                                  ChartLabels="_referrerChart.Labels" Width="100%" Height="350px"
+                                  LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default">No referrer data for this period.</MudText>
+                    }
+                </MudPaper>
+            </MudStack>
         }
-    </MudSelect>
-</MudStack>
+    </MudTabPanel>
 
-@if (!_loaded)
-{
-    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-}
-else
-{
-    <MudStack Spacing="4">
-        <MudGrid>
-            <MudItem xs="12" md="4" Style="display:flex">
-                <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
-                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by Browser</MudText>
-                    @if (_browserPie.Labels.Length > 0)
-                    {
-                        <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_browserPie.Series"
-                                  ChartLabels="_browserPie.Labels" Width="100%" Height="300px"
-                                  LegendPosition="Position.Bottom" />
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Default">No browser data for this period.</MudText>
-                    }
-                </MudPaper>
-            </MudItem>
-            <MudItem xs="12" md="4" Style="display:flex">
-                <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
-                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by OS</MudText>
-                    @if (_osPie.Labels.Length > 0)
-                    {
-                        <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_osPie.Series"
-                                  ChartLabels="_osPie.Labels" Width="100%" Height="300px"
-                                  LegendPosition="Position.Bottom" />
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Default">No OS data for this period.</MudText>
-                    }
-                </MudPaper>
-            </MudItem>
-            <MudItem xs="12" md="4" Style="display:flex">
-                <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
-                    <MudText Typo="Typo.h6" Class="mb-2">Sessions by Device Type</MudText>
-                    @if (_devicePie.Labels.Length > 0)
-                    {
-                        <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_devicePie.Series"
-                                  ChartLabels="_devicePie.Labels" Width="100%" Height="300px"
-                                  LegendPosition="Position.Bottom" />
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Default">No device data for this period.</MudText>
-                    }
-                </MudPaper>
-            </MudItem>
-        </MudGrid>
+    <MudTabPanel Text="Page Breakdown">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="2">
+            <MudSelect T="string" Value="_breakdownPeriod" ValueChanged="OnBreakdownPeriodChanged"
+                       Variant="Variant.Outlined" Dense="true" Style="max-width:160px;" Immediate="true" Margin="Margin.Dense"
+                       Label="Period">
+                <MudSelectItem T="string" Value="@("Past Week")">Past Week</MudSelectItem>
+                <MudSelectItem T="string" Value="@("Past Month")">Past Month</MudSelectItem>
+            </MudSelect>
+            <MudSelect T="string" Value="_breakdownSiteId" ValueChanged="OnBreakdownSiteChanged"
+                       Variant="Variant.Outlined" Dense="true" Style="max-width:250px;" Immediate="true" Margin="Margin.Dense"
+                       Label="Site">
+                <MudSelectItem T="string" Value="@("")">All Sites</MudSelectItem>
+                @foreach (var site in _sites)
+                {
+                    <MudSelectItem T="string" Value="@site.Id">@site.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ExportBreakdownXlsx"
+                       StartIcon="@Icons.Material.Filled.Download" Size="Size.Small"
+                       Disabled="@(_breakdownRows.Count == 0 || _exporting)">
+                Export (.xlsx)
+            </MudButton>
+        </MudStack>
 
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-2">Sessions by Page</MudText>
-            @if (_pageChart.Series.Count > 0)
-            {
-                <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_pageChart.Series"
-                          ChartLabels="_pageChart.Labels" Width="100%" Height="350px"
-                          LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
-            }
-            else
-            {
-                <MudText Typo="Typo.body2" Color="Color.Default">No page data for this period.</MudText>
-            }
-        </MudPaper>
-
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-2">Sessions by Country</MudText>
-            @if (_countryChart.Series.Count > 0)
-            {
-                <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_countryChart.Series"
-                          ChartLabels="_countryChart.Labels" Width="100%" Height="350px"
-                          LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
-            }
-            else
-            {
-                <MudText Typo="Typo.body2" Color="Color.Default">No country data for this period.</MudText>
-            }
-        </MudPaper>
-
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-2">Avg Session Duration (seconds)</MudText>
-            @if (_durationChart.Series.Count > 0)
-            {
-                <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_durationChart.Series"
-                          ChartLabels="_durationChart.Labels" Width="100%" Height="350px"
-                          LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
-            }
-            else
-            {
-                <MudText Typo="Typo.body2" Color="Color.Default">No session duration data for this period.</MudText>
-            }
-        </MudPaper>
-
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-2">Sessions by Referrer</MudText>
-            @if (_referrerChart.Series.Count > 0)
-            {
-                <MudChart T="double" ChartType="ChartType.Line" ChartSeries="_referrerChart.Series"
-                          ChartLabels="_referrerChart.Labels" Width="100%" Height="350px"
-                          LegendPosition="Position.Right" ChartOptions="_lineOptions" MatchBoundsToSize="true" />
-            }
-            else
-            {
-                <MudText Typo="Typo.body2" Color="Color.Default">No referrer data for this period.</MudText>
-            }
-        </MudPaper>
-
-    </MudStack>
-}
+        @if (!_breakdownLoaded)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_breakdownRows.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Default">No page traffic for this period.</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                @_breakdownRows.Count page / OS / browser combinations · visits are page-view counts
+            </MudText>
+            <div style="overflow-x:auto;">
+                <MudSimpleTable Dense="true" Bordered="true" Striped="true" Hover="true"
+                                Class="breakdown-table" Style="min-width:max-content;">
+                    <thead>
+                        <tr>
+                            <th>Page</th>
+                            <th>OS</th>
+                            <th>Browser</th>
+                            @foreach (var d in _breakdownDates)
+                            {
+                                <th class="num">@d.ToString("M/d")</th>
+                            }
+                            <th class="num">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in _breakdownRows)
+                        {
+                            <tr>
+                                <td>@row.Page</td>
+                                <td>@row.Os</td>
+                                <td>@row.Browser</td>
+                                @foreach (var d in _breakdownDates)
+                                {
+                                    var count = row.Counts.GetValueOrDefault(d, 0);
+                                    <td class="num">@(count > 0 ? count.ToString() : "")</td>
+                                }
+                                <td class="num"><strong>@row.Total</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </div>
+        }
+    </MudTabPanel>
+</MudTabs>
