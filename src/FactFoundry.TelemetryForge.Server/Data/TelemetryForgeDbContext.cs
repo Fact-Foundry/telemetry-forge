@@ -113,6 +113,7 @@ public class TelemetryForgeDbContext : DbContext
             entity.HasIndex(e => e.SessionHash);
             entity.HasIndex(e => e.Materialized);
             entity.HasIndex(e => e.IsBot);
+            entity.HasIndex(e => e.IsIgnored);
         });
 
         modelBuilder.Entity<WebSession>(entity =>

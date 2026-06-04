@@ -47,15 +47,10 @@ public static class TelemetryEndpoints
             if (site is null)
                 return Results.Json(new { error = "Site not found." }, statusCode: 404);
 
-            // Drop traffic from admin-configured ignored IPs (e.g. the developer's own IP) so it
-            // never reaches the database or any report. The raw IP is not logged or persisted.
-            if (ipFilter.IsIgnored(payload.IpAddress))
-            {
-                logger.LogInformation(
-                    "Ignored web event from filtered IP for site {SiteId} (event {EventType} on {Page})",
-                    siteId, payload.EventType, payload.Page);
-                return Results.Accepted();
-            }
+            // Flag traffic from admin-configured ignored IPs (e.g. the developer's own IP). The event
+            // is still stored and visible in the event stream, but excluded from analytics/reports.
+            // Only the boolean verdict is kept — the raw IP is never persisted.
+            var isIgnored = ipFilter.IsIgnored(payload.IpAddress);
 
             var sessionHash = HashSessionIdentity(payload.SessionId, payload.IpAddress);
             var visitorSessionHash = HashVisitorSessionIdentity(payload.SessionId, payload.IpAddress);
@@ -169,6 +164,7 @@ public static class TelemetryEndpoints
                 DeviceType = ua.DeviceType,
                 IsBot = isBot,
                 BotReason = botReason,
+                IsIgnored = isIgnored,
                 Referrer = payload.Referrer,
                 Language = payload.Language,
                 Timestamp = payload.Timestamp

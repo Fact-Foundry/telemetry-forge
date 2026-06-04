@@ -108,7 +108,7 @@ public partial class Analytics : ComponentBase
         _breakdownDates = dates;
 
         var query = Db.WebEvents.AsNoTracking()
-            .Where(e => e.IngestedAt >= from && e.IngestedAt < to && !e.IsBot && e.EventType == "page_view");
+            .Where(e => e.IngestedAt >= from && e.IngestedAt < to && !e.IsBot && !e.IsIgnored && e.EventType == "page_view");
 
         if (!string.IsNullOrEmpty(_breakdownSiteId))
             query = query.Where(e => e.SiteId == _breakdownSiteId);
@@ -196,7 +196,7 @@ public partial class Analytics : ComponentBase
             .ToList();
 
         var query = Db.WebEvents.AsNoTracking()
-            .Where(e => e.IngestedAt >= from && e.IngestedAt < queryEnd && !e.IsBot && e.EventType == "page_view");
+            .Where(e => e.IngestedAt >= from && e.IngestedAt < queryEnd && !e.IsBot && !e.IsIgnored && e.EventType == "page_view");
 
         if (!string.IsNullOrEmpty(_selectedSiteId))
             query = query.Where(e => e.SiteId == _selectedSiteId);
@@ -273,7 +273,7 @@ public partial class Analytics : ComponentBase
         DateTime from, DateTime queryEnd, List<DateTime> dates, string[] labels)
     {
         var query = Db.WebEvents.AsNoTracking()
-            .Where(e => e.IngestedAt >= from && e.IngestedAt < queryEnd && !e.IsBot);
+            .Where(e => e.IngestedAt >= from && e.IngestedAt < queryEnd && !e.IsBot && !e.IsIgnored);
 
         if (!string.IsNullOrEmpty(_selectedSiteId))
             query = query.Where(e => e.SiteId == _selectedSiteId);

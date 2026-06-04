@@ -64,6 +64,9 @@ public class EnrichedWebEvent
     [JsonPropertyName("bot_reason")]
     public string? BotReason { get; set; }
 
+    [JsonPropertyName("is_ignored")]
+    public bool IsIgnored { get; set; }
+
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }
 }

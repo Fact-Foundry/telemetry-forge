@@ -56,11 +56,12 @@
     <MudPaper Class="pa-4" Elevation="1">
         <MudText Typo="Typo.h6" Class="mb-2">Traffic Filtering</MudText>
         <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
-            Web traffic from these IP addresses is dropped at ingestion — it is never stored and does not
-            appear in any report or the event stream (a line is written to the server log instead).
-            Use this to exclude your own traffic so it does not inflate analytics. One entry per line;
-            single IPv4/IPv6 addresses or CIDR ranges are supported (e.g. <code>203.0.113.7</code> or
-            <code>203.0.113.0/24</code>). Lines starting with <code>#</code> are treated as comments.
+            Web traffic from these IP addresses is flagged as "Ignored" — it is excluded from the
+            dashboard and analytics, but still recorded and visible in the event stream (where you can
+            hide it with the "Hide Ignored" toggle). Use this to exclude your own traffic so it does not
+            inflate analytics. Only the match result is kept; the raw IP is never persisted. One entry
+            per line; single IPv4/IPv6 addresses or CIDR ranges are supported (e.g. <code>203.0.113.7</code>
+            or <code>203.0.113.0/24</code>). Lines starting with <code>#</code> are treated as comments.
         </MudText>
         <MudStack Row="true" AlignItems="AlignItems.End" Spacing="2">
             <MudTextField @bind-Value="_ignoredIps" Label="Ignored IP Addresses" Variant="Variant.Outlined"

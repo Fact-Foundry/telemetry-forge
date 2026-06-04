@@ -49,13 +49,13 @@ public partial class Dashboard : ComponentBase
         var activeWindow = (DateTimeOffset)nowUtc.AddMinutes(-5);
 
         _activeNow = await Db.WebEvents
-            .Where(e => e.Timestamp >= activeWindow && !e.IsBot)
+            .Where(e => e.Timestamp >= activeWindow && !e.IsBot && !e.IsIgnored)
             .Select(e => e.SessionHash)
             .Distinct()
             .CountAsync();
 
         _sessionData = await Db.WebEvents.AsNoTracking()
-            .Where(e => e.EventType == "page_view" && !e.IsBot)
+            .Where(e => e.EventType == "page_view" && !e.IsBot && !e.IsIgnored)
             .GroupBy(e => new { e.SessionHash, e.SiteId })
             .Select(g => new SiteSessionData { SiteId = g.Key.SiteId, IngestedAt = g.Min(e => e.IngestedAt) })
             .ToListAsync();
@@ -90,7 +90,7 @@ public partial class Dashboard : ComponentBase
         BuildSiteSummaries();
 
         var recentWebEvents = await Db.WebEvents.AsNoTracking()
-            .Where(e => e.EventType == "page_view" && !e.IsBot)
+            .Where(e => e.EventType == "page_view" && !e.IsBot && !e.IsIgnored)
             .OrderByDescending(e => e.Timestamp)
             .Take(10)
             .ToListAsync();

@@ -119,4 +119,10 @@ public class WebEvent
     /// Why this event was flagged as bot (e.g. "user-agent", "no-language", "country-hop", "page-velocity", "path-scan").
     /// </summary>
     public string? BotReason { get; set; }
+
+    /// <summary>
+    /// Whether this event came from an admin-configured ignored IP. Such events are kept and shown
+    /// in the event stream but excluded from analytics and reports.
+    /// </summary>
+    public bool IsIgnored { get; set; }
 }

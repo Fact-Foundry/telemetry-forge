@@ -122,6 +122,7 @@ public class DatabaseEventPublisher : IEventPublisher
         Language = e.Language,
         IsBot = e.IsBot,
         BotReason = e.BotReason,
+        IsIgnored = e.IsIgnored,
         Timestamp = e.Timestamp,
         IngestedAt = DateTime.UtcNow
     };

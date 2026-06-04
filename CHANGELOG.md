@@ -4,7 +4,7 @@
 
 ### Features
 
-- Ignored IPs setting (General) — drop web traffic from configured IP addresses or CIDR ranges at ingestion (never stored, excluded from all reports, logged); lets developers exclude their own traffic from analytics
+- Ignored IPs setting (General) — flag web traffic from configured IP addresses or CIDR ranges (single IPs or CIDR, IPv4/IPv6) as "Ignored": excluded from the dashboard and analytics but still visible in the event stream (with a "Hide Ignored" toggle); lets developers keep their own traffic out of the numbers. Raw IP is never persisted
 - Analytics "Page Breakdown" tab — pivot table of every page that got traffic broken down by OS × browser × day (exact page-view counts, no top-N limit), filterable by site and Past Week / Past Month, with XLSX export
 
 ## [1.1.3]

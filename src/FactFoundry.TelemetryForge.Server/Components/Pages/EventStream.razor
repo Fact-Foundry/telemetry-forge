@@ -27,6 +27,7 @@
         <MudSelectItem T="string" Value="@("Mobile")">Mobile</MudSelectItem>
     </MudSelect>
     <MudSwitch T="bool" Value="_hideBots" ValueChanged="OnHideBotsChanged" Label="Hide Bots" Color="Color.Primary" />
+    <MudSwitch T="bool" Value="_hideIgnored" ValueChanged="OnHideIgnoredChanged" Label="Hide Ignored" Color="Color.Primary" />
     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyFilters"
                StartIcon="@Icons.Material.Filled.FilterList" Size="Size.Small">
         Filter
@@ -91,6 +92,10 @@ else
                 @if (context.IsBot)
                 {
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Error">Bot</MudChip>
+                }
+                else if (context.IsIgnored)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary">Ignored</MudChip>
                 }
                 else
                 {

@@ -26,6 +26,7 @@ public partial class EventStream : ComponentBase
     private string _siteFilter = string.Empty;
     private string _typeFilter = string.Empty;
     private bool _hideBots = true;
+    private bool _hideIgnored;
     private TimeZoneInfo _tz = TimeZoneInfo.Utc;
 
     protected override async Task OnInitializedAsync()
@@ -53,6 +54,8 @@ public partial class EventStream : ComponentBase
             var webQuery = Db.WebEvents.AsNoTracking().AsQueryable();
             if (_hideBots)
                 webQuery = webQuery.Where(e => !e.IsBot);
+            if (_hideIgnored)
+                webQuery = webQuery.Where(e => !e.IsIgnored);
             if (!string.IsNullOrEmpty(_siteFilter))
                 webQuery = webQuery.Where(e => e.SiteId == _siteFilter);
 
@@ -73,6 +76,7 @@ public partial class EventStream : ComponentBase
                 WebEventType = e.EventType,
                 IsFirstSeen = e.IsFirstVisit,
                 IsBot = e.IsBot,
+                IsIgnored = e.IsIgnored,
                 Platform = e.Browser ?? "Unknown",
                 IngestedAt = e.IngestedAt,
                 Timestamp = e.Timestamp.UtcDateTime,
@@ -163,6 +167,12 @@ public partial class EventStream : ComponentBase
         await LoadEvents();
     }
 
+    private async Task OnHideIgnoredChanged(bool value)
+    {
+        _hideIgnored = value;
+        await LoadEvents();
+    }
+
     private async Task ExportCsv()
     {
         var sb = new StringBuilder();
@@ -171,7 +181,7 @@ public partial class EventStream : ComponentBase
         foreach (var e in _events)
         {
             var eventCol = e.SourceType == "Web" ? e.WebEventType ?? "" : "session";
-            var visitor = e.IsBot ? "Bot" : e.IsFirstSeen ? "New" : "Returning";
+            var visitor = e.IsBot ? "Bot" : e.IsIgnored ? "Ignored" : e.IsFirstSeen ? "New" : "Returning";
             var pageFeature = e.SourceType == "Web"
                 ? e.EventName ?? e.Page ?? ""
                 : $"{e.FeatureCount} features";
@@ -242,6 +252,7 @@ public partial class EventStream : ComponentBase
         public bool Expanded { get; set; }
 
         public bool IsBot { get; set; }
+        public bool IsIgnored { get; set; }
 
         // Web event fields
         public string? SessionHash { get; set; }
