@@ -61,13 +61,17 @@ public static class TelemetryEndpoints
 
             var ua = userAgentParser.Parse(payload.UserAgent, payload.SecChUa, payload.SecChUaMobile, payload.SecChUaPlatform);
 
-            string? country = payload.Country;
+            // The web SDK supplies the country as an ISO 3166-1 alpha-2 code (CF-IPCountry header).
+            // Fall back to server-side IP geolocation when the SDK provides none.
+            string? countryCode = payload.Country;
+            string? countryName = GeoLocationService.CountryNameFromCode(countryCode);
             string? region = payload.Region;
-            if (string.IsNullOrWhiteSpace(country))
+            if (string.IsNullOrWhiteSpace(countryCode))
             {
                 var clientIp = GeoLocationService.GetClientIp(context);
                 var geo = geoLocationService.LookupDatabase(clientIp);
-                country = geo.Country;
+                countryCode = geo.CountryCode;
+                countryName = geo.Country ?? GeoLocationService.CountryNameFromCode(geo.CountryCode);
                 region = geo.Region;
             }
 
@@ -85,16 +89,16 @@ public static class TelemetryEndpoints
                 botReason = "no-language";
             }
 
-            if (!isBot && !string.IsNullOrWhiteSpace(country))
+            if (!isBot && !string.IsNullOrWhiteSpace(countryCode))
             {
                 var priorCountries = await db.WebEvents
-                    .Where(e => e.SessionHash == sessionHash && e.Country != null)
-                    .Select(e => e.Country!)
+                    .Where(e => e.SessionHash == sessionHash && e.CountryCode != null)
+                    .Select(e => e.CountryCode!)
                     .Distinct()
                     .ToListAsync();
 
-                if (!priorCountries.Contains(country))
-                    priorCountries.Add(country);
+                if (!priorCountries.Contains(countryCode))
+                    priorCountries.Add(countryCode);
 
                 if (priorCountries.Count >= 3)
                 {
@@ -157,7 +161,8 @@ public static class TelemetryEndpoints
                 EventName = payload.EventName,
                 EventData = payload.EventData,
                 TargetUrl = payload.TargetUrl,
-                Country = country,
+                Country = countryName,
+                CountryCode = countryCode,
                 Region = region,
                 Browser = ua.Browser,
                 Os = ua.Os,
@@ -193,6 +198,7 @@ public static class TelemetryEndpoints
         DesktopPayload payload,
         TelemetryForgeDbContext db,
         VisitorHashService visitorHashService,
+        GeoLocationService geoLocationService,
         IEventPublisher publisher,
         ILogger<DesktopPayload> logger)
     {
@@ -207,6 +213,10 @@ public static class TelemetryEndpoints
             var isFirstInstall = await visitorHashService.IsFirstSeenAsync(
                 payload.FingerprintHash, HashType.Fingerprint, SiteType.Desktop, siteId);
 
+            // Desktop apps connect directly, so the connection IP is the client's. Geolocate it
+            // server-side (populated only when a GeoIP database is configured) and discard the IP.
+            var geo = geoLocationService.LookupDatabase(GeoLocationService.GetClientIp(context));
+
             var enriched = new EnrichedDesktopEvent
             {
                 AppId = siteId,
@@ -215,6 +225,8 @@ public static class TelemetryEndpoints
                 Platform = payload.Platform,
                 OsVersion = payload.OsVersion,
                 FingerprintHash = payload.FingerprintHash,
+                Country = geo.Country ?? GeoLocationService.CountryNameFromCode(geo.CountryCode),
+                CountryCode = geo.CountryCode,
                 SessionId = payload.SessionId,
                 Sequence = payload.Sequence,
                 IsFirstInstall = isFirstInstall,
@@ -248,6 +260,7 @@ public static class TelemetryEndpoints
         MobilePayload payload,
         TelemetryForgeDbContext db,
         VisitorHashService visitorHashService,
+        GeoLocationService geoLocationService,
         IEventPublisher publisher,
         ILogger<MobilePayload> logger)
     {
@@ -269,6 +282,10 @@ public static class TelemetryEndpoints
             var isFirstInstall = await visitorHashService.IsFirstSeenAsync(
                 payload.DeviceHash, hashType, SiteType.Mobile, siteId);
 
+            // Mobile apps connect directly, so the connection IP is the client's. Geolocate it
+            // server-side (populated only when a GeoIP database is configured) and discard the IP.
+            var geo = geoLocationService.LookupDatabase(GeoLocationService.GetClientIp(context));
+
             var enriched = new EnrichedMobileEvent
             {
                 AppId = siteId,
@@ -278,6 +295,8 @@ public static class TelemetryEndpoints
                 OsVersion = payload.OsVersion,
                 DeviceHash = payload.DeviceHash,
                 DeviceHashType = payload.DeviceHashType,
+                Country = geo.Country ?? GeoLocationService.CountryNameFromCode(geo.CountryCode),
+                CountryCode = geo.CountryCode,
                 SessionId = payload.SessionId,
                 Sequence = payload.Sequence,
                 IsFirstInstall = isFirstInstall,

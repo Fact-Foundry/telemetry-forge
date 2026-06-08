@@ -40,6 +40,9 @@ public class EnrichedWebEvent
     [JsonPropertyName("country")]
     public string? Country { get; set; }
 
+    [JsonPropertyName("country_code")]
+    public string? CountryCode { get; set; }
+
     [JsonPropertyName("region")]
     public string? Region { get; set; }
 

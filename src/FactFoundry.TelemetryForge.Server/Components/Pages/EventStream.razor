@@ -26,6 +26,14 @@
         <MudSelectItem T="string" Value="@("Desktop")">Desktop</MudSelectItem>
         <MudSelectItem T="string" Value="@("Mobile")">Mobile</MudSelectItem>
     </MudSelect>
+    <MudSelect T="string" Value="_pageFilter" ValueChanged="OnPageChanged" Label="Page/Feature"
+               Variant="Variant.Outlined" Dense="true" Style="max-width: 300px;" Immediate="true" Margin="Margin.Dense">
+        <MudSelectItem T="string" Value="@string.Empty">All Pages/Features</MudSelectItem>
+        @foreach (var pg in _pageOptions)
+        {
+            <MudSelectItem T="string" Value="@pg">@pg</MudSelectItem>
+        }
+    </MudSelect>
     <MudSwitch T="bool" Value="_hideBots" ValueChanged="OnHideBotsChanged" Label="Hide Bots" Color="Color.Primary" />
     <MudSwitch T="bool" Value="_hideIgnored" ValueChanged="OnHideIgnoredChanged" Label="Hide Ignored" Color="Color.Primary" />
     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ApplyFilters"

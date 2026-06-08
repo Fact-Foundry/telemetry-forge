@@ -61,7 +61,7 @@ public class WebEvent
     public string? TargetUrl { get; set; }
 
     /// <summary>
-    /// Country resolved from IP geolocation.
+    /// Country name resolved from IP geolocation or the SDK-supplied country code.
     /// </summary>
     public string? Country { get; set; }
 
@@ -125,4 +125,9 @@ public class WebEvent
     /// in the event stream but excluded from analytics and reports.
     /// </summary>
     public bool IsIgnored { get; set; }
+
+    /// <summary>
+    /// ISO 3166-1 alpha-2 country code resolved from the SDK (CF-IPCountry) or IP geolocation.
+    /// </summary>
+    public string? CountryCode { get; set; }
 }

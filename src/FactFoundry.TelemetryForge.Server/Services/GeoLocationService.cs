@@ -78,6 +78,7 @@ public class GeoLocationService : IDisposable
             {
                 return new GeoLocationResult(
                     response.Country?.Name,
+                    response.Country?.IsoCode,
                     response.MostSpecificSubdivision?.Name);
             }
         }
@@ -90,10 +91,17 @@ public class GeoLocationService : IDisposable
     }
 
     /// <summary>
-    /// Extracts the client IP from the request, checking X-Forwarded-For first.
+    /// Extracts the client IP from the request, preferring CloudFlare's
+    /// <c>CF-Connecting-IP</c> header, then <c>X-Forwarded-For</c>, then the
+    /// connection's remote address. This ensures the true client IP is resolved
+    /// when the server sits behind a CDN/reverse proxy.
     /// </summary>
     public static IPAddress? GetClientIp(HttpContext context)
     {
+        var cfConnecting = context.Request.Headers["CF-Connecting-IP"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(cfConnecting) && IPAddress.TryParse(cfConnecting.Trim(), out var cfParsed))
+            return cfParsed;
+
         var forwarded = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
         if (!string.IsNullOrEmpty(forwarded))
         {
@@ -105,6 +113,25 @@ public class GeoLocationService : IDisposable
         return context.Connection.RemoteIpAddress;
     }
 
+    /// <summary>
+    /// Resolves an English country name from an ISO 3166-1 alpha-2 country code
+    /// (e.g. "US" → "United States"). Returns null for null/invalid codes.
+    /// </summary>
+    public static string? CountryNameFromCode(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code) || code.Length != 2)
+            return null;
+
+        try
+        {
+            return new System.Globalization.RegionInfo(code.ToUpperInvariant()).EnglishName;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -113,12 +140,12 @@ public class GeoLocationService : IDisposable
 }
 
 /// <summary>
-/// Country and region resolved from an IP address.
+/// Country, country code, and region resolved from an IP address.
 /// </summary>
-public record GeoLocationResult(string? Country, string? Region)
+public record GeoLocationResult(string? Country, string? CountryCode, string? Region)
 {
     /// <summary>
     /// Empty result when geolocation is unavailable or the IP cannot be resolved.
     /// </summary>
-    public static readonly GeoLocationResult Empty = new(null, null);
+    public static readonly GeoLocationResult Empty = new(null, null, null);
 }

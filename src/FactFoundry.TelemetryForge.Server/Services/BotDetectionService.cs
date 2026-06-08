@@ -119,8 +119,8 @@ public class BotDetectionService
     private static string? CheckCountryHop(List<WebEvent> events)
     {
         var countries = events
-            .Where(e => e.Country != null)
-            .Select(e => e.Country!)
+            .Where(e => e.CountryCode != null)
+            .Select(e => e.CountryCode!)
             .Distinct()
             .Count();
 

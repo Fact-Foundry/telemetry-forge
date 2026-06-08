@@ -31,6 +31,7 @@ public class BotDetectionServiceTests
             EventType = eventType,
             Language = language ?? string.Empty,
             Country = country,
+            CountryCode = country,
             IsBot = isBot,
             BotReason = botReason,
             DeviceType = deviceType,

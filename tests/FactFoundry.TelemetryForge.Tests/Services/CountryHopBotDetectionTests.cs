@@ -28,7 +28,7 @@ public class CountryHopBotDetectionTests
             Page = "/test",
             EventType = "page_view",
             Language = "en-US",
-            Country = country,
+            CountryCode = country,
             IsBot = isBot,
             Timestamp = DateTimeOffset.UtcNow,
             IngestedAt = DateTime.UtcNow
@@ -45,8 +45,8 @@ public class CountryHopBotDetectionTests
         await db.SaveChangesAsync();
 
         var priorCountries = await db.WebEvents
-            .Where(e => e.SessionHash == "session-a" && e.Country != null)
-            .Select(e => e.Country!)
+            .Where(e => e.SessionHash == "session-a" && e.CountryCode != null)
+            .Select(e => e.CountryCode!)
             .Distinct()
             .ToListAsync();
 
@@ -66,8 +66,8 @@ public class CountryHopBotDetectionTests
         var incomingCountry = "PL";
 
         var priorCountries = await db.WebEvents
-            .Where(e => e.SessionHash == "session-b" && e.Country != null)
-            .Select(e => e.Country!)
+            .Where(e => e.SessionHash == "session-b" && e.CountryCode != null)
+            .Select(e => e.CountryCode!)
             .Distinct()
             .ToListAsync();
 
@@ -90,8 +90,8 @@ public class CountryHopBotDetectionTests
         var incomingCountry = "PL";
 
         var priorCountries = await db.WebEvents
-            .Where(e => e.SessionHash == "session-c" && e.Country != null)
-            .Select(e => e.Country!)
+            .Where(e => e.SessionHash == "session-c" && e.CountryCode != null)
+            .Select(e => e.CountryCode!)
             .Distinct()
             .ToListAsync();
 
@@ -123,8 +123,8 @@ public class CountryHopBotDetectionTests
         await db.SaveChangesAsync();
 
         var priorCountries = await db.WebEvents
-            .Where(e => e.SessionHash == "session-d" && e.Country != null)
-            .Select(e => e.Country!)
+            .Where(e => e.SessionHash == "session-d" && e.CountryCode != null)
+            .Select(e => e.CountryCode!)
             .Distinct()
             .ToListAsync();
 
@@ -143,14 +143,14 @@ public class CountryHopBotDetectionTests
         await db.SaveChangesAsync();
 
         var countriesE = await db.WebEvents
-            .Where(e => e.SessionHash == "session-e" && e.Country != null)
-            .Select(e => e.Country!)
+            .Where(e => e.SessionHash == "session-e" && e.CountryCode != null)
+            .Select(e => e.CountryCode!)
             .Distinct()
             .ToListAsync();
 
         var countriesF = await db.WebEvents
-            .Where(e => e.SessionHash == "session-f" && e.Country != null)
-            .Select(e => e.Country!)
+            .Where(e => e.SessionHash == "session-f" && e.CountryCode != null)
+            .Select(e => e.CountryCode!)
             .Distinct()
             .ToListAsync();
 
@@ -169,8 +169,8 @@ public class CountryHopBotDetectionTests
         await db.SaveChangesAsync();
 
         var priorCountries = await db.WebEvents
-            .Where(e => e.SessionHash == "session-g" && e.Country != null)
-            .Select(e => e.Country!)
+            .Where(e => e.SessionHash == "session-g" && e.CountryCode != null)
+            .Select(e => e.CountryCode!)
             .Distinct()
             .ToListAsync();
 

@@ -4,7 +4,7 @@ using FactFoundry.TelemetryForge.Server.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.JSInterop;
-using MudBlazor;
+using FactFoundry.Blazor.Charts.Models;
 using OoxSpreadsheet;
 using OslSpreadsheet.Models;
 
@@ -24,23 +24,23 @@ public partial class Analytics : ComponentBase
     private string _period = "Last 7 Days";
     private string _selectedSiteId = "";
     private string _selectedOs = "";
+    private string _selectedPage = "";
     private bool _loaded;
     private TimeZoneInfo _tz = TimeZoneInfo.Utc;
 
     private List<Site> _sites = [];
     private List<string> _osOptions = [];
+    private List<string> _pageOptions = [];
     private Dictionary<string, string?> _siteDomains = new();
 
     private ChartData _pageChart = new();
-    private ChartData _countryChart = new();
+    private List<MapDataPoint> _countryMap = [];
     private ChartData _durationChart = new();
     private ChartData _referrerChart = new();
 
     private PieData _browserPie = new();
     private PieData _osPie = new();
     private PieData _devicePie = new();
-
-    private readonly LineChartOptions _lineOptions = new() { YAxisTicks = 10 };
 
     // Page Breakdown tab
     private string _breakdownPeriod = "Past Week";
@@ -80,6 +80,12 @@ public partial class Analytics : ComponentBase
     private async Task OnOsChanged(string os)
     {
         _selectedOs = os;
+        await LoadCharts();
+    }
+
+    private async Task OnPageChanged(string page)
+    {
+        _selectedPage = page;
         await LoadCharts();
     }
 
@@ -208,6 +214,7 @@ public partial class Analytics : ComponentBase
                 SessionHash = e.SessionHash,
                 Page = e.Page,
                 Country = e.Country,
+                CountryCode = e.CountryCode,
                 Referrer = e.Referrer,
                 SiteId = e.SiteId,
                 Browser = e.Browser,
@@ -222,17 +229,29 @@ public partial class Analytics : ComponentBase
             .OrderBy(o => o)
             .ToList();
 
+        // Distinct pages for the Page filter, scoped by the active site/period (not narrowed by the
+        // OS or page selections themselves). Reset the selection if it's no longer available.
+        _pageOptions = allEvents
+            .Select(e => string.IsNullOrEmpty(e.Page) ? "/" : e.Page)
+            .Distinct()
+            .OrderBy(p => p)
+            .ToList();
+        if (!string.IsNullOrEmpty(_selectedPage) && !_pageOptions.Contains(_selectedPage))
+            _selectedPage = "";
+
         var events = allEvents;
         if (!string.IsNullOrEmpty(_selectedOs))
             events = events.Where(e => (e.Os ?? "Unknown") == _selectedOs).ToList();
+        if (!string.IsNullOrEmpty(_selectedPage))
+            events = events.Where(e => (string.IsNullOrEmpty(e.Page) ? "/" : e.Page) == _selectedPage).ToList();
 
         foreach (var e in events)
             e.LocalDate = TimeZoneInfo.ConvertTimeFromUtc(e.IngestedAt, _tz).Date;
 
-        var labels = dates.Select(d => d.ToString("M/d")).ToArray();
+        var labels = dates.Select(d => d.ToString("M/d")).ToList();
 
         _pageChart = BuildChart(events, dates, labels, e => string.IsNullOrEmpty(e.Page) ? "/" : e.Page);
-        _countryChart = BuildChart(events, dates, labels, e => e.Country ?? "Unknown");
+        _countryMap = BuildCountryMap(events);
         _durationChart = await BuildDurationChartAsync(from, queryEnd, dates, labels);
         _referrerChart = BuildReferrerChart(events, dates, labels);
 
@@ -244,7 +263,7 @@ public partial class Analytics : ComponentBase
     private static ChartData BuildChart(
         List<EventProjection> events,
         List<DateTime> dates,
-        string[] labels,
+        List<string> labels,
         Func<EventProjection, string> dimensionSelector)
     {
         var grouped = events
@@ -260,17 +279,31 @@ public partial class Analytics : ComponentBase
             .Take(MaxSeries)
             .ToList();
 
-        var series = grouped.Select(d => new ChartSeries<double>
+        var series = grouped.Select(d => new ChartSeries
         {
-            Name = Truncate(d.Dimension),
-            Data = dates.Select(date => (double)d.ByDate.GetValueOrDefault(date, 0)).ToArray()
+            Label = Truncate(d.Dimension),
+            Values = dates.Select(date => (decimal)d.ByDate.GetValueOrDefault(date, 0)).ToList()
         }).ToList();
 
         return new ChartData { Series = series, Labels = labels };
     }
 
+    /// <summary>
+    /// Aggregates unique sessions per country (ISO alpha-2 code) for the world map heatmap.
+    /// </summary>
+    private static List<MapDataPoint> BuildCountryMap(List<EventProjection> events)
+    {
+        return events
+            .Where(e => !string.IsNullOrEmpty(e.CountryCode))
+            .GroupBy(e => new { e.CountryCode, e.SessionHash })
+            .Select(g => g.Key)
+            .GroupBy(x => x.CountryCode!)
+            .Select(g => new MapDataPoint { CountryCode = g.Key, Value = g.Count() })
+            .ToList();
+    }
+
     private async Task<ChartData> BuildDurationChartAsync(
-        DateTime from, DateTime queryEnd, List<DateTime> dates, string[] labels)
+        DateTime from, DateTime queryEnd, List<DateTime> dates, List<string> labels)
     {
         var query = Db.WebEvents.AsNoTracking()
             .Where(e => e.IngestedAt >= from && e.IngestedAt < queryEnd && !e.IsBot && !e.IsIgnored);
@@ -318,10 +351,10 @@ public partial class Analytics : ComponentBase
             .Take(MaxSeries)
             .ToList();
 
-        var series = grouped.Select(d => new ChartSeries<double>
+        var series = grouped.Select(d => new ChartSeries
         {
-            Name = Truncate(d.Page),
-            Data = dates.Select(date => d.ByDate.GetValueOrDefault(date, 0)).ToArray()
+            Label = Truncate(d.Page),
+            Values = dates.Select(date => (decimal)d.ByDate.GetValueOrDefault(date, 0)).ToList()
         }).ToList();
 
         return new ChartData { Series = series, Labels = labels };
@@ -330,7 +363,7 @@ public partial class Analytics : ComponentBase
     private ChartData BuildReferrerChart(
         List<EventProjection> events,
         List<DateTime> dates,
-        string[] labels)
+        List<string> labels)
     {
         var classified = events
             .Select(e =>
@@ -361,10 +394,10 @@ public partial class Analytics : ComponentBase
             .Take(MaxSeries)
             .ToList();
 
-        var series = grouped.Select(d => new ChartSeries<double>
+        var series = grouped.Select(d => new ChartSeries
         {
-            Name = Truncate(d.Dimension),
-            Data = dates.Select(date => (double)d.ByDate.GetValueOrDefault(date, 0)).ToArray()
+            Label = Truncate(d.Dimension),
+            Values = dates.Select(date => (decimal)d.ByDate.GetValueOrDefault(date, 0)).ToList()
         }).ToList();
 
         return new ChartData { Series = series, Labels = labels };
@@ -385,11 +418,11 @@ public partial class Analytics : ComponentBase
 
         return new PieData
         {
-            Series = [new ChartSeries<double>
+            Data = grouped.Select(g => new ChartSegment
             {
-                Data = grouped.Select(g => (double)g.Count).ToArray()
-            }],
-            Labels = grouped.Select(g => $"{g.Dimension} ({g.Count})").ToArray()
+                Label = $"{g.Dimension} ({g.Count})",
+                Value = g.Count
+            }).ToList()
         };
     }
 
@@ -431,6 +464,7 @@ public partial class Analytics : ComponentBase
         public string SessionHash { get; set; } = string.Empty;
         public string Page { get; set; } = string.Empty;
         public string? Country { get; set; }
+        public string? CountryCode { get; set; }
         public string? Referrer { get; set; }
         public string SiteId { get; set; } = string.Empty;
         public string? Browser { get; set; }
@@ -440,13 +474,12 @@ public partial class Analytics : ComponentBase
 
     private class ChartData
     {
-        public List<ChartSeries<double>> Series { get; set; } = [];
-        public string[] Labels { get; set; } = [];
+        public List<ChartSeries> Series { get; set; } = [];
+        public List<string> Labels { get; set; } = [];
     }
 
     private class PieData
     {
-        public List<ChartSeries<double>> Series { get; set; } = [];
-        public string[] Labels { get; set; } = [];
+        public List<ChartSegment> Data { get; set; } = [];
     }
 }

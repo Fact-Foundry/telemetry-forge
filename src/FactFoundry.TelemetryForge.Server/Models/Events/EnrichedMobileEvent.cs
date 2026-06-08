@@ -29,6 +29,12 @@ public class EnrichedMobileEvent
     [JsonPropertyName("device_hash_type")]
     public string DeviceHashType { get; set; } = string.Empty;
 
+    [JsonPropertyName("country")]
+    public string? Country { get; set; }
+
+    [JsonPropertyName("country_code")]
+    public string? CountryCode { get; set; }
+
     [JsonPropertyName("session_id")]
     public string SessionId { get; set; } = string.Empty;
 

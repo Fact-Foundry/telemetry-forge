@@ -6,6 +6,21 @@
 
 - Ignored IPs setting (General) — flag web traffic from configured IP addresses or CIDR ranges (single IPs or CIDR, IPv4/IPv6) as "Ignored": excluded from the dashboard and analytics but still visible in the event stream (with a "Hide Ignored" toggle); lets developers keep their own traffic out of the numbers. Raw IP is never persisted
 - Analytics "Page Breakdown" tab — pivot table of every page that got traffic broken down by OS × browser × day (exact page-view counts, no top-N limit), filterable by site and Past Week / Past Month, with XLSX export
+- Country name + ISO code split — `Country` now stores the country name and a new `CountryCode` (ISO 3166-1 alpha-2) column is stored on WebEvent and WebSession; the SDK-supplied CF-IPCountry code resolves the name via `RegionInfo`
+- Desktop and Mobile geolocation — sessions are geolocated server-side from the connection IP (Country + CountryCode), populated when a GeoIP database is configured; raw IP is never persisted
+- Client IP resolution now prefers the `CF-Connecting-IP` header (then `X-Forwarded-For`, then the connection address) so client geolocation is correct behind CloudFlare/reverse proxies
+
+### UI Improvements
+
+- Analytics charts migrated to FactFoundry.Blazor.Charts (zero-dependency pure-SVG) — replaces the MudBlazor charts for the browser/OS/device/bot pies and the page/duration/referrer line charts
+- Analytics "Sessions by Country" is now a world map heatmap (choropleth) keyed on country code, replacing the per-country line chart
+- Analytics charts tab reorganized into a 2/3 main-visual + 1/3 donut-rail grid (map on top, browser/OS/device as donuts down the right, referrer full-width) — shorter, better balanced; chart viewBox sizes tuned so text matches the rest of the UI
+- Page filter on Analytics and Page/Feature filter on Event Stream — dropdowns of distinct pages (web) and features (desktop/mobile), scoped by the active Site/Type so options reflect the current selection
+- World map color scale darkened at the low end for better contrast against no-data countries
+
+### Fixes
+
+- Country-hop bot detection now keys on `CountryCode` (stable ISO code) instead of the country name, avoiding mixed name/code false positives after the country split
 
 ## [1.1.3]
 

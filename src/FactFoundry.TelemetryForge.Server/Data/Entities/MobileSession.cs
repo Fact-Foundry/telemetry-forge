@@ -94,4 +94,14 @@ public class MobileSession
     /// When this record was ingested by the server.
     /// </summary>
     public DateTime IngestedAt { get; set; }
+
+    /// <summary>
+    /// Country name resolved from IP geolocation (null until a GeoIP database is configured).
+    /// </summary>
+    public string? Country { get; set; }
+
+    /// <summary>
+    /// ISO 3166-1 alpha-2 country code resolved from IP geolocation (null until a GeoIP database is configured).
+    /// </summary>
+    public string? CountryCode { get; set; }
 }

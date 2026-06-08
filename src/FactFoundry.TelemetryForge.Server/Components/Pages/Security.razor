@@ -72,11 +72,9 @@
     <MudItem xs="12" md="6">
         <MudPaper Class="pa-4" Elevation="1">
             <MudText Typo="Typo.h6" Class="mb-2">Bots Detected</MudText>
-            @if (_botBrowserPie.Labels.Length > 0)
+            @if (_botBrowserPie.Data.Count > 0)
             {
-                <MudChart T="double" ChartType="ChartType.Pie" ChartSeries="_botBrowserPie.Series"
-                          ChartLabels="_botBrowserPie.Labels" Width="100%" Height="250px"
-                          LegendPosition="Position.Bottom" />
+                <PieChart Data="_botBrowserPie.Data" Responsive="true" Width="500" Height="280" />
             }
             else
             {

@@ -46,7 +46,7 @@ public class WebSession
     public bool IsFirstVisit { get; set; }
 
     /// <summary>
-    /// Country resolved from IP geolocation (null until geolocation is implemented).
+    /// Country name resolved from IP geolocation or the SDK-supplied country code.
     /// </summary>
     public string? Country { get; set; }
 
@@ -109,4 +109,9 @@ public class WebSession
     /// When this record was ingested by the server.
     /// </summary>
     public DateTime IngestedAt { get; set; }
+
+    /// <summary>
+    /// ISO 3166-1 alpha-2 country code resolved from the SDK (CF-IPCountry) or IP geolocation.
+    /// </summary>
+    public string? CountryCode { get; set; }
 }

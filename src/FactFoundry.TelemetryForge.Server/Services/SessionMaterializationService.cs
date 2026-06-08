@@ -101,6 +101,7 @@ public class SessionMaterializationService : BackgroundService
                 DurationMs = (int)(events[^1].Timestamp - events[0].Timestamp).TotalMilliseconds,
                 IsFirstVisit = events.Any(e => e.IsFirstVisit),
                 Country = firstEvent.Country,
+                CountryCode = firstEvent.CountryCode,
                 Region = firstEvent.Region,
                 Browser = firstEvent.Browser,
                 Os = firstEvent.Os,

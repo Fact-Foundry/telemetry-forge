@@ -4,6 +4,7 @@ using FactFoundry.TelemetryForge.Server.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
+using FactFoundry.Blazor.Charts.Models;
 
 namespace FactFoundry.TelemetryForge.Server.Components.Pages;
 
@@ -86,11 +87,11 @@ public partial class Security : ComponentBase
 
         _botBrowserPie = new PieData
         {
-            Series = [new ChartSeries<double>
+            Data = botBrowserCounts.Select(x => new ChartSegment
             {
-                Data = botBrowserCounts.Select(x => (double)x.Count).ToArray()
-            }],
-            Labels = botBrowserCounts.Select(x => $"{x.Browser} ({x.Count})").ToArray()
+                Label = $"{x.Browser} ({x.Count})",
+                Value = x.Count
+            }).ToList()
         };
     }
 
@@ -213,7 +214,6 @@ public partial class Security : ComponentBase
 
     private class PieData
     {
-        public List<ChartSeries<double>> Series { get; set; } = [];
-        public string[] Labels { get; set; } = [];
+        public List<ChartSegment> Data { get; set; } = [];
     }
 }

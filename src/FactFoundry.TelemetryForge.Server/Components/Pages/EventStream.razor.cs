@@ -25,6 +25,8 @@ public partial class EventStream : ComponentBase
     private List<EventRow> _events = [];
     private string _siteFilter = string.Empty;
     private string _typeFilter = string.Empty;
+    private string _pageFilter = string.Empty;
+    private List<string> _pageOptions = [];
     private bool _hideBots = true;
     private bool _hideIgnored;
     private TimeZoneInfo _tz = TimeZoneInfo.Utc;
@@ -47,6 +49,8 @@ public partial class EventStream : ComponentBase
 
     private async Task LoadEvents()
     {
+        await LoadPageOptions();
+
         var events = new List<EventRow>();
 
         if (_typeFilter is "" or "Web")
@@ -58,6 +62,8 @@ public partial class EventStream : ComponentBase
                 webQuery = webQuery.Where(e => !e.IsIgnored);
             if (!string.IsNullOrEmpty(_siteFilter))
                 webQuery = webQuery.Where(e => e.SiteId == _siteFilter);
+            if (!string.IsNullOrEmpty(_pageFilter))
+                webQuery = webQuery.Where(e => e.Page == _pageFilter);
 
             var webEvents = await webQuery.OrderByDescending(e => e.Timestamp).Take(100).ToListAsync();
 
@@ -102,7 +108,11 @@ public partial class EventStream : ComponentBase
             if (!string.IsNullOrEmpty(_siteFilter))
                 desktopQuery = desktopQuery.Where(s => s.SiteId == _siteFilter);
 
-            var desktopSessions = await desktopQuery.OrderByDescending(s => s.IngestedAt).Take(100).ToListAsync();
+            // FeaturePath is a JSON column, so membership filtering happens in memory (after ordering).
+            var desktopSessions = string.IsNullOrEmpty(_pageFilter)
+                ? await desktopQuery.OrderByDescending(s => s.IngestedAt).Take(100).ToListAsync()
+                : (await desktopQuery.OrderByDescending(s => s.IngestedAt).ToListAsync())
+                    .Where(s => s.FeaturePath.Contains(_pageFilter)).Take(100).ToList();
             events.AddRange(desktopSessions.Select(s => new EventRow
             {
                 Id = s.Id,
@@ -130,7 +140,11 @@ public partial class EventStream : ComponentBase
             if (!string.IsNullOrEmpty(_siteFilter))
                 mobileQuery = mobileQuery.Where(s => s.SiteId == _siteFilter);
 
-            var mobileSessions = await mobileQuery.OrderByDescending(s => s.IngestedAt).Take(100).ToListAsync();
+            // FeaturePath is a JSON column, so membership filtering happens in memory (after ordering).
+            var mobileSessions = string.IsNullOrEmpty(_pageFilter)
+                ? await mobileQuery.OrderByDescending(s => s.IngestedAt).Take(100).ToListAsync()
+                : (await mobileQuery.OrderByDescending(s => s.IngestedAt).ToListAsync())
+                    .Where(s => s.FeaturePath.Contains(_pageFilter)).Take(100).ToList();
             events.AddRange(mobileSessions.Select(s => new EventRow
             {
                 Id = s.Id,
@@ -159,6 +173,69 @@ public partial class EventStream : ComponentBase
     private async Task ApplyFilters()
     {
         await LoadEvents();
+    }
+
+    private async Task OnPageChanged(string page)
+    {
+        _pageFilter = page;
+        await LoadEvents();
+    }
+
+    /// <summary>
+    /// Builds the distinct Page/Feature options for the filter dropdown, scoped by the active
+    /// site and type (and bot/ignored toggles for web). Resets the selection if it's no longer available.
+    /// </summary>
+    private async Task LoadPageOptions()
+    {
+        var options = new HashSet<string>(StringComparer.Ordinal);
+
+        if (_typeFilter is "" or "Web")
+        {
+            var webQuery = Db.WebEvents.AsNoTracking().AsQueryable();
+            if (_hideBots)
+                webQuery = webQuery.Where(e => !e.IsBot);
+            if (_hideIgnored)
+                webQuery = webQuery.Where(e => !e.IsIgnored);
+            if (!string.IsNullOrEmpty(_siteFilter))
+                webQuery = webQuery.Where(e => e.SiteId == _siteFilter);
+
+            var pages = await webQuery
+                .Where(e => e.Page != null && e.Page != "")
+                .Select(e => e.Page!)
+                .Distinct()
+                .ToListAsync();
+            foreach (var p in pages)
+                options.Add(p);
+        }
+
+        if (_typeFilter is "" or "Desktop")
+        {
+            var desktopQuery = Db.DesktopSessions.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrEmpty(_siteFilter))
+                desktopQuery = desktopQuery.Where(s => s.SiteId == _siteFilter);
+
+            // FeaturePath is a JSON column; flatten distinct feature names in memory.
+            var sessions = await desktopQuery.ToListAsync();
+            foreach (var feature in sessions.SelectMany(s => s.FeaturePath))
+                if (!string.IsNullOrEmpty(feature))
+                    options.Add(feature);
+        }
+
+        if (_typeFilter is "" or "Mobile")
+        {
+            var mobileQuery = Db.MobileSessions.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrEmpty(_siteFilter))
+                mobileQuery = mobileQuery.Where(s => s.SiteId == _siteFilter);
+
+            var sessions = await mobileQuery.ToListAsync();
+            foreach (var feature in sessions.SelectMany(s => s.FeaturePath))
+                if (!string.IsNullOrEmpty(feature))
+                    options.Add(feature);
+        }
+
+        _pageOptions = options.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+        if (!string.IsNullOrEmpty(_pageFilter) && !_pageOptions.Contains(_pageFilter))
+            _pageFilter = string.Empty;
     }
 
     private async Task OnHideBotsChanged(bool value)

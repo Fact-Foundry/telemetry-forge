@@ -26,6 +26,12 @@ public class EnrichedDesktopEvent
     [JsonPropertyName("fingerprint_hash")]
     public string FingerprintHash { get; set; } = string.Empty;
 
+    [JsonPropertyName("country")]
+    public string? Country { get; set; }
+
+    [JsonPropertyName("country_code")]
+    public string? CountryCode { get; set; }
+
     [JsonPropertyName("session_id")]
     public string SessionId { get; set; } = string.Empty;
 
