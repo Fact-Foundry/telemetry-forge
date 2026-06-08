@@ -87,7 +87,7 @@
                         <MudText Typo="Typo.h6" Class="mb-2">Sessions by Browser</MudText>
                         @if (_browserPie.Data.Count > 0)
                         {
-                            <DonutChart Data="_browserPie.Data" Responsive="true" Width="400" Height="360" CenterLabel="Sessions" />
+                            <DonutChart Data="_browserPie.Data" Responsive="true" Width="400" Height="360" CenterLabel="Sessions" ShowLegendValues="true" />
                         }
                         else
                         {
@@ -116,7 +116,7 @@
                         <MudText Typo="Typo.h6" Class="mb-2">Sessions by OS</MudText>
                         @if (_osPie.Data.Count > 0)
                         {
-                            <DonutChart Data="_osPie.Data" Responsive="true" Width="400" Height="360" CenterLabel="Sessions" />
+                            <DonutChart Data="_osPie.Data" Responsive="true" Width="400" Height="360" CenterLabel="Sessions" ShowLegendValues="true" />
                         }
                         else
                         {
@@ -128,7 +128,7 @@
                 @* Row 3 — Avg Session Duration (2/3) + Device donut (1/3) *@
                 <MudItem xs="12" md="8" Style="display:flex">
                     <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
-                        <MudText Typo="Typo.h6" Class="mb-2">Avg Session Duration (seconds)</MudText>
+                        <MudText Typo="Typo.h6" Class="mb-2">Avg Session Duration (minutes)</MudText>
                         @if (_durationChart.Series.Count > 0)
                         {
                             <LineChart Series="_durationChart.Series" XAxisLabels="_durationChart.Labels"
@@ -145,7 +145,7 @@
                         <MudText Typo="Typo.h6" Class="mb-2">Sessions by Device Type</MudText>
                         @if (_devicePie.Data.Count > 0)
                         {
-                            <DonutChart Data="_devicePie.Data" Responsive="true" Width="400" Height="360" CenterLabel="Sessions" />
+                            <DonutChart Data="_devicePie.Data" Responsive="true" Width="400" Height="360" CenterLabel="Sessions" ShowLegendValues="true" />
                         }
                         else
                         {

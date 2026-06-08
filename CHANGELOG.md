@@ -17,6 +17,7 @@
 - Analytics charts tab reorganized into a 2/3 main-visual + 1/3 donut-rail grid (map on top, browser/OS/device as donuts down the right, referrer full-width) — shorter, better balanced; chart viewBox sizes tuned so text matches the rest of the UI
 - Page filter on Analytics and Page/Feature filter on Event Stream — dropdowns of distinct pages (web) and features (desktop/mobile), scoped by the active Site/Type so options reflect the current selection
 - World map color scale darkened at the low end for better contrast against no-data countries
+- Analytics "Avg Session Duration" chart now shows minutes instead of seconds
 
 ### Fixes
 

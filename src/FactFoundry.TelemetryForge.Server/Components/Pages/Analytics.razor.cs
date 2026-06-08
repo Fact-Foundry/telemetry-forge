@@ -345,7 +345,7 @@ public partial class Analytics : ComponentBase
             {
                 Page = g.Key,
                 Total = g.Sum(d => d.Count()),
-                ByDate = g.ToDictionary(d => d.Key.LocalDate, d => Math.Round(d.Average(x => x.Duration), 1))
+                ByDate = g.ToDictionary(d => d.Key.LocalDate, d => Math.Round(d.Average(x => x.Duration) / 60.0, 1))
             })
             .OrderByDescending(g => g.Total)
             .Take(MaxSeries)
@@ -420,7 +420,7 @@ public partial class Analytics : ComponentBase
         {
             Data = grouped.Select(g => new ChartSegment
             {
-                Label = $"{g.Dimension} ({g.Count})",
+                Label = g.Dimension,
                 Value = g.Count
             }).ToList()
         };
