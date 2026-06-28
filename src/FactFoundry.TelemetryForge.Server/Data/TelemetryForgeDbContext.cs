@@ -61,6 +61,11 @@ public class TelemetryForgeDbContext : DbContext
     /// </summary>
     public DbSet<DataApiKey> DataApiKeys => Set<DataApiKey>();
 
+    /// <summary>
+    /// Raw API request telemetry events (per-request).
+    /// </summary>
+    public DbSet<ApiEvent> ApiEvents => Set<ApiEvent>();
+
     public TelemetryForgeDbContext(DbContextOptions<TelemetryForgeDbContext> options)
         : base(options)
     {
@@ -154,6 +159,18 @@ public class TelemetryForgeDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.ApiKeyHash).IsRequired();
             entity.Property(e => e.SiteIds).HasJsonConversion();
+        });
+
+        modelBuilder.Entity<ApiEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SiteId).IsRequired();
+            entity.Property(e => e.RouteTemplate).IsRequired().HasMaxLength(512);
+            entity.Property(e => e.Method).IsRequired().HasMaxLength(16);
+            entity.HasIndex(e => e.SiteId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.StatusCode);
+            entity.HasIndex(e => e.RouteTemplate);
         });
     }
 }

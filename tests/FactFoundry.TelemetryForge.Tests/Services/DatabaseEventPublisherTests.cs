@@ -256,6 +256,70 @@ public class DatabaseEventPublisherTests
     }
 
     [Fact]
+    public async Task PublishAsync_ApiEvent_StoresApiEvent()
+    {
+        using var db = CreateDb();
+        var publisher = new DatabaseEventPublisher(db, NullLogger<DatabaseEventPublisher>.Instance);
+
+        var apiEvent = new EnrichedApiEvent
+        {
+            SiteId = "api-1",
+            SiteName = "License API",
+            RouteTemplate = "/license/{id}",
+            Method = "GET",
+            StatusCode = 200,
+            LatencyMs = 42,
+            Country = "United States",
+            CountryCode = "US",
+            Timestamp = DateTimeOffset.UtcNow
+        };
+
+        await publisher.PublishAsync(apiEvent);
+
+        var stored = await db.ApiEvents.SingleAsync();
+        Assert.Equal("api-1", stored.SiteId);
+        Assert.Equal("/license/{id}", stored.RouteTemplate);
+        Assert.Equal("GET", stored.Method);
+        Assert.Equal(200, stored.StatusCode);
+        Assert.Equal(42, stored.LatencyMs);
+        Assert.Equal("US", stored.CountryCode);
+    }
+
+    [Fact]
+    public async Task PublishAsync_ApiEvents_AppendEachRequest()
+    {
+        using var db = CreateDb();
+        var publisher = new DatabaseEventPublisher(db, NullLogger<DatabaseEventPublisher>.Instance);
+
+        await publisher.PublishAsync(new EnrichedApiEvent
+        {
+            SiteId = "api-1",
+            SiteName = "License API",
+            RouteTemplate = "/license/{id}",
+            Method = "GET",
+            StatusCode = 200,
+            LatencyMs = 10,
+            Timestamp = DateTimeOffset.UtcNow
+        });
+
+        await publisher.PublishAsync(new EnrichedApiEvent
+        {
+            SiteId = "api-1",
+            SiteName = "License API",
+            RouteTemplate = "/license/{id}",
+            Method = "GET",
+            StatusCode = 404,
+            LatencyMs = 5,
+            Timestamp = DateTimeOffset.UtcNow
+        });
+
+        var events = await db.ApiEvents.OrderBy(e => e.StatusCode).ToListAsync();
+        Assert.Equal(2, events.Count);
+        Assert.Equal(200, events[0].StatusCode);
+        Assert.Equal(404, events[1].StatusCode);
+    }
+
+    [Fact]
     public async Task PublishAsync_WebEvent_StoresIsBotFlag()
     {
         using var db = CreateDb();

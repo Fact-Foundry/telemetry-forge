@@ -26,6 +26,7 @@ public static class TelemetryEndpoints
         group.MapPost("/web", (Delegate)HandleWebPayload);
         group.MapPost("/desktop", (Delegate)HandleDesktopPayload);
         group.MapPost("/mobile", (Delegate)HandleMobilePayload);
+        group.MapPost("/api", (Delegate)HandleApiPayload);
     }
 
     private static async Task<IResult> HandleWebPayload(
@@ -321,6 +322,57 @@ public static class TelemetryEndpoints
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to process mobile payload for site {SiteId}", siteId);
+            return Results.StatusCode(500);
+        }
+    }
+
+    private static async Task<IResult> HandleApiPayload(
+        HttpContext context,
+        ApiEventPayload payload,
+        TelemetryForgeDbContext db,
+        GeoLocationService geoLocationService,
+        IEventPublisher publisher,
+        ILogger<ApiEventPayload> logger)
+    {
+        var siteId = (string)context.Items[ApiKeyValidationFilter.SiteIdKey]!;
+
+        try
+        {
+            var site = await db.Sites.AsNoTracking().FirstOrDefaultAsync(s => s.Id == siteId);
+            if (site is null)
+                return Results.Json(new { error = "Site not found." }, statusCode: 404);
+
+            // API telemetry carries no caller IP. The connection IP is the submitting app server;
+            // geolocate it server-side (populated only when a GeoIP database is configured) and discard it.
+            var geo = geoLocationService.LookupDatabase(GeoLocationService.GetClientIp(context));
+
+            var enriched = new EnrichedApiEvent
+            {
+                SiteId = siteId,
+                SiteName = site.Name,
+                RouteTemplate = payload.RouteTemplate,
+                Method = payload.Method,
+                StatusCode = payload.StatusCode,
+                LatencyMs = payload.LatencyMs,
+                Country = geo.Country ?? GeoLocationService.CountryNameFromCode(geo.CountryCode),
+                CountryCode = geo.CountryCode,
+                Timestamp = payload.Timestamp
+            };
+
+            await publisher.PublishAsync(enriched, context.RequestAborted);
+
+            site = await db.Sites.FindAsync(siteId);
+            if (site is not null)
+            {
+                site.LastPayloadAt = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+            }
+
+            return Results.Accepted();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to process API payload for site {SiteId}", siteId);
             return Results.StatusCode(500);
         }
     }

@@ -53,5 +53,8 @@ public enum SiteType
     Desktop,
 
     /// <summary>MAUI mobile application (iOS, Android).</summary>
-    Mobile
+    Mobile,
+
+    /// <summary>HTTP API service (ASP.NET Minimal API, Web API, gRPC-over-HTTP).</summary>
+    Api
 }

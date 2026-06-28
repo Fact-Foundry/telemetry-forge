@@ -4,6 +4,7 @@
 
 ### Features
 
+- API telemetry is now a first-class type — new `POST /api/telemetry/api` endpoint, `ApiEventPayload`, and `ApiEvent` storage capturing route template, method, status code, latency, country (server-side geo, IP discarded), and timestamp. Registration dropdown gains an **API** type. Resolves the bot misclassification that occurred when API traffic was routed through the Web channel (ADR-005, Phase 1)
 - Database schema is now managed by EF Core migrations applied automatically at startup (`Database.Migrate()`) for PostgreSQL; the in-memory provider still uses `EnsureCreated`. Existing databases originally built by `EnsureCreated` are baselined on first run (initial migration recorded as applied, no DDL run against existing tables), so self-hosters upgrade by deploying — no manual SQL (ADR-008)
 
 ### Docs

@@ -33,6 +33,9 @@ public class DatabaseEventPublisher : IEventPublisher
             case EnrichedMobileEvent mobile:
                 await UpsertMobileSession(mobile, cancellationToken);
                 return;
+            case EnrichedApiEvent api:
+                _db.ApiEvents.Add(MapApiEvent(api));
+                break;
             default:
                 _logger.LogWarning("DatabaseEventPublisher received unknown event type: {EventType}", typeof(T).Name);
                 return;
@@ -152,6 +155,19 @@ public class DatabaseEventPublisher : IEventPublisher
             Message = err.Message,
             Timestamp = err.Timestamp
         }).ToList(),
+        IngestedAt = DateTime.UtcNow
+    };
+
+    private static ApiEvent MapApiEvent(EnrichedApiEvent e) => new()
+    {
+        SiteId = e.SiteId,
+        RouteTemplate = e.RouteTemplate,
+        Method = e.Method,
+        StatusCode = e.StatusCode,
+        LatencyMs = e.LatencyMs,
+        Country = e.Country,
+        CountryCode = e.CountryCode,
+        Timestamp = e.Timestamp,
         IngestedAt = DateTime.UtcNow
     };
 
