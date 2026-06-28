@@ -155,12 +155,14 @@ builder.Services.AddMudServices();
 
 var app = builder.Build();
 
-// Ensure database is created (in-memory or development)
-if (app.Environment.IsDevelopment())
+// Prepare the schema: migrate relational providers (baselining legacy databases),
+// or EnsureCreated for the in-memory provider.
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<TelemetryForgeDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    var dbLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+        .CreateLogger(typeof(DatabaseInitializer));
+    await DatabaseInitializer.InitializeAsync(db, dbLogger);
 }
 
 // Load the ignored-IP filter rules into memory (failures are logged and non-fatal)

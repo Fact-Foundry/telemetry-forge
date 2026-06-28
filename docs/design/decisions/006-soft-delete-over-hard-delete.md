@@ -27,7 +27,7 @@ The same reasoning applies project-wide for the admin/config bucket. Hard delete
 
 - **Queries must filter** on the deletion marker, on the soft-delete bucket only. Prefer a single enforcement point — an EF Core global query filter (`HasQueryFilter`) per soft-deletable entity — so callers can't forget. Provide an explicit opt-out (`IgnoreQueryFilters`) for admin/recovery/purge views.
 - **Uniqueness constraints** (e.g. site name, API-key hash) must account for soft-deleted rows. Decision: a **name** freed by a soft delete may be **reused**; a soft-deleted site's **API-key hash is excluded** from active key validation so the dead key cannot authenticate.
-- **Schema cost.** Each soft-deletable entity gains a marker column; the cascade in the "also delete" path is a plain delete. Adding the marker column to an existing database is handled by the startup reconciler (ADR-008) — the old `EnsureCreated` gap (ADR-004's `BotName`) no longer applies.
+- **Schema cost.** Each soft-deletable entity gains a marker column; the cascade in the "also delete" path is a plain delete. Adding the marker column to an existing database is handled by an EF migration (ADR-008) — the old `EnsureCreated` gap (ADR-004's `BotName`) no longer applies.
 - **Delete UI** still requires the confirmation dialog mandated by the coding standards; soft delete does not relax that. The dialog additionally carries the "also delete all associated records" choice for `Site`.
 - **Genuine purge** (retention / GDPR erasure / the "also delete" cascade) remains available as an explicit, separate operation distinct from the everyday soft delete.
 
@@ -35,4 +35,4 @@ The same reasoning applies project-wide for the admin/config bucket. Hard delete
 
 - ADR-005 — per-site config lives as typed `Site` columns; the wrong-type re-registration flow relies on the "also delete all associated records" option here.
 - ADR-007 — `HealthCheckResult` is transactional (hard delete / retention); a soft-deleted site stops being polled.
-- ADR-008 — idempotent startup schema reconciler, which adds the soft-delete marker columns to existing databases.
+- ADR-008 — EF Core migrations applied at startup, which add the soft-delete marker columns to existing databases.

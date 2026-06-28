@@ -9,7 +9,7 @@
 2. **Data model = auto-captured core + optional consumer-defined dimensions** (below). Caller identity is one *optional* dimension, never required.
 3. **Add ingestion-endpoint access control** — an optional trusted-submitter IP allowlist on `POST /api/telemetry/*` (transport-IP gated; reject, never store; optionally record a security event).
 
-**Cross-cutting convention established here:** per-site configuration is stored as **nullable typed columns on the `Site` entity**, with **global defaults cached in memory** and used when a site's column is null. Adding those columns to an existing database is handled by the idempotent startup reconciler (ADR-008). (Soft delete, the other convention surfaced during this design, is ADR-006.)
+**Cross-cutting convention established here:** per-site configuration is stored as **nullable typed columns on the `Site` entity**, with **global defaults cached in memory** and used when a site's column is null. Adding those columns to an existing database is handled by an EF migration (ADR-008). (Soft delete, the other convention surfaced during this design, is ADR-006.)
 
 > **Supersedes** the earlier draft of this ADR, which proposed reusing the Web channel + a `SiteType=API` reclassification. That was over-indexed on avoiding pipeline duplication; see "Why first-class" below.
 
@@ -27,7 +27,7 @@ The data model genuinely differs — this is not cosmetic:
 - So reusing Web both *omits* the useful API fields and *imposes* irrelevant browser ones. The web `page_view`/session model can't express good API telemetry.
 - The right axis is **share infrastructure, separate contract/model/view** — which the DI-service structure already makes cheap. There is little real duplication to avoid.
 
-Honest cost of going first-class: a new `ApiEvent` table, created on existing databases by the startup reconciler (ADR-008). This is more work than the rejected reclassification, but produces correct, purpose-built data.
+Honest cost of going first-class: a new `ApiEvent` table, created on existing databases by an EF migration (ADR-008). This is more work than the rejected reclassification, but produces correct, purpose-built data.
 
 ## Data model
 
@@ -89,7 +89,7 @@ Behavior:
 
 ## Per-site configuration (typed columns on `Site`, not KV)
 
-Per-site config is stored as **nullable typed columns on `Site`**, added safely to existing databases by the reconciler (ADR-008). Resolution is **site column first; if null, fall back to a global default cached in memory**.
+Per-site config is stored as **nullable typed columns on `Site`**, added safely to existing databases by an EF migration (ADR-008). Resolution is **site column first; if null, fall back to a global default cached in memory**.
 
 - **Per-site value:** a nullable `Site` column (e.g. `IngestAllowlist`).
 - **Global default:** a single value (an `appsettings` entry or one global `ServerSetting`) loaded into memory and refreshed periodically **and** immediately when an admin saves it — the same cache pattern `IpFilterService` already uses. No per-request DB hit for the default.
@@ -100,9 +100,9 @@ Rationale: a single-server operator sets one global value; a multi-host operator
 
 | Piece | Mechanism | Schema change? |
 |---|---|---|
-| `ApiEvent` storage | new entity/table (mirrors `EnrichedDesktopEvent`/`EnrichedMobileEvent`) | **Yes** — created by the reconciler (ADR-008) |
+| `ApiEvent` storage | new entity/table (mirrors `EnrichedDesktopEvent`/`EnrichedMobileEvent`) | **Yes** — created by an EF migration (ADR-008) |
 | `SiteType=API` | append enum value (existing column) | None |
-| Per-site ingestion allowlist | nullable `Site` column | **Yes** — added by the reconciler (ADR-008) |
+| Per-site ingestion allowlist | nullable `Site` column | **Yes** — added by an EF migration (ADR-008) |
 | Global config defaults | `appsettings` / single `ServerSetting`, cached in memory | None |
 
 ## SDK / Admin
@@ -122,7 +122,7 @@ Rationale: a single-server operator sets one global value; a multi-host operator
 - ADR-004 — bot/security classification (API inherits Axis 2 behavioral detectors; browser heuristics N/A).
 - ADR-006 — soft delete over hard delete (and the "also delete all associated records" flow used when re-registering a wrong-type site).
 - ADR-007 — active health-check/uptime monitoring (the complementary "is it down" half of API health).
-- ADR-008 — idempotent startup schema reconciler (creates `ApiEvent` and adds the per-site config column on existing databases).
+- ADR-008 — EF Core migrations applied at startup (creates `ApiEvent` and adds the per-site config column on existing databases).
 - `Api/TelemetryEndpoints.cs` lines 78-90 — the browser bot detection that misclassified API traffic.
 - `Api/ApiKeyValidationFilter.cs` — resolves the site (extend to load it and check the allowlist column).
 - `Services/IpFilterService.cs` / `CidrRange` — extract list-matching for reuse; `Data/Entities/Site.cs` — new config columns.

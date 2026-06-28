@@ -8,8 +8,8 @@
 Add **active synthetic monitoring**: a background service in TelemetryForge that periodically calls a registered site's health URL, records each poll result, and **alerts** when a site goes down (and recovers). This is the complementary half of API health to ADR-005's passive ingestion — passive tells you *what happened when traffic arrived*; active tells you *it's down even when no one is calling*.
 
 1. **A hosted background service** polls each enabled site's configured health URL on its interval (pattern: existing `SessionMaterializationService`).
-2. **Per-site config via nullable typed columns on `Site`** (the ADR-005 convention) — health URL, interval, timeout, expected status, enabled flag, optional (encrypted) auth header — each with a **global default cached in memory** when the site's column is null. The reconciler (ADR-008) adds the columns.
-3. **A new `HealthCheckResult` entity/table** stores each poll outcome; the reconciler (ADR-008) creates it on existing databases. `HealthCheckResult` is **transactional data — hard-deleted / retention-governed** (ADR-006), never soft-deleted.
+2. **Per-site config via nullable typed columns on `Site`** (the ADR-005 convention) — health URL, interval, timeout, expected status, enabled flag, optional (encrypted) auth header — each with a **global default cached in memory** when the site's column is null. An EF migration (ADR-008) adds the columns.
+3. **A new `HealthCheckResult` entity/table** stores each poll outcome; an EF migration (ADR-008) creates it on existing databases. `HealthCheckResult` is **transactional data — hard-deleted / retention-governed** (ADR-006), never soft-deleted.
 4. **SSRF guardrails** — the operator supplies the URL, so the server makes outbound calls to an arbitrary address. Block loopback/private/link-local/cloud-metadata by default.
 5. **Self-probe exclusion** — tag the probe so an instrumented target's own SDK doesn't record TF's health calls as telemetry.
 6. **Alerting** — notify via the ADR-004 sinks pipeline after **N consecutive failures** (anti-flap), plus a **recovery** notice.
@@ -69,8 +69,8 @@ An **uptime view**: current up/down per site, uptime % over a window, latency tr
 
 | Piece | Mechanism | Schema change? |
 |---|---|---|
-| `HealthCheckResult` storage | new entity/table | **Yes** — created by the reconciler (ADR-008) |
-| Per-site health-check config | nullable `Site` columns | **Yes** — added by the reconciler (ADR-008) |
+| `HealthCheckResult` storage | new entity/table | **Yes** — created by an EF migration (ADR-008) |
+| Per-site health-check config | nullable `Site` columns | **Yes** — added by an EF migration (ADR-008) |
 | Global config defaults | `appsettings` / single `ServerSetting`, cached | None |
 
 ## Phasing
@@ -85,6 +85,6 @@ An **uptime view**: current up/down per site, uptime % over a window, latency tr
 - ADR-004 — sinks/notification pipeline (reused for alerting).
 - ADR-005 — first-class API health (passive half); per-site config convention (nullable `Site` columns + cached global default) reused here.
 - ADR-006 — soft delete (a soft-deleted site stops being polled); `HealthCheckResult` is transactional / hard-deleted.
-- ADR-008 — idempotent startup schema reconciler (creates `HealthCheckResult` and adds the per-site config columns).
+- ADR-008 — EF Core migrations applied at startup (creates `HealthCheckResult` and adds the per-site config columns).
 - `Services/SessionMaterializationService.cs` — the hosted background-service pattern this follows.
 - `Services/IpFilterService.cs` / `CidrRange` — reused for the SSRF range checks and the cached-config pattern.
