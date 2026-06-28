@@ -167,7 +167,36 @@ The verification work is independent of the classification/UI rebuild and can la
 
 ## References
 
-- Googlebot published IP ranges (JSON/CIDR): https://developers.google.com/search/apis/ipranges/googlebot.json
-- Googlebot fraud detection / verification guide: https://almcorp.com/blog/googlebot-fraud-detection-prevention-guide/
-- AI user-agents landscape 2026: https://nohacks.co/blog/ai-user-agents-landscape-2026
-- Understanding AI crawlers: https://www.performanceliebe.de/en/blog/understanding-ai-crawlers/
+### Crawler verification — official IP-range / verification endpoints
+
+Authoritative, machine-readable sources for confirming a request that *claims* to be a known crawler actually originates from the vendor (feeds the IP-range matching / FCrDNS plan above).
+
+**Google** — files relocated March 2026 to `/static/crawling/ipranges/`; the old `/search/apis/ipranges/` paths redirect for ~6 months then phase out:
+- Common crawlers (includes Googlebot): https://developers.google.com/static/crawling/ipranges/common-crawlers.json
+- Special-case crawlers: https://developers.google.com/static/crawling/ipranges/special-crawlers.json
+- User-triggered fetchers (Google): https://developers.google.com/static/crawling/ipranges/user-triggered-fetchers-google.json
+- User-triggered fetchers (general): https://developers.google.com/static/crawling/ipranges/user-triggered-fetchers.json
+- Verification guide: https://developers.google.com/crawling/docs/crawlers-fetchers/verify-google-requests
+
+**Bing:**
+- Bingbot IP list (JSON): https://www.bing.com/toolbox/bingbot.json
+- Verify Bingbot tool: https://www.bing.com/toolbox/verify-bingbot
+
+**OpenAI:**
+- GPTBot: https://openai.com/gptbot.json
+- OAI-SearchBot: https://openai.com/searchbot.json
+- ChatGPT-User: https://openai.com/chatgpt-user.json
+- Crawler overview: https://developers.openai.com/api/docs/bots
+
+**Anthropic** (ClaudeBot / Claude-User / Claude-SearchBot):
+- Crawler details + IP verification list: https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler
+
+**Additional reputable crawlers** (verified official endpoints — non-exhaustive; the long tail can be added to the bot-intel pack as needed):
+- DuckDuckGo (DuckDuckBot): https://duckduckgo.com/duckduckbot.json
+- Apple (Applebot): https://search.developer.apple.com/applebot.json
+- Perplexity (PerplexityBot / Perplexity-User): https://www.perplexity.com/perplexitybot.json , https://www.perplexity.com/perplexity-user.json
+- Amazon (Amazonbot) — HTML pages, not JSON: training https://developer.amazon.com/amazonbot/ip-addresses/ , search https://developer.amazon.com/amazonbot/searchbot-ip-addresses/ , user-initiated https://developer.amazon.com/amazonbot/live-ip-addresses/
+
+> **Implementation note:** Google, Bing, OpenAI, DuckDuckGo, Apple, and Perplexity all publish the **same JSON shape** — `{ "creationTime", "prefixes": [ { "ipv4Prefix" | "ipv6Prefix" } ] }` — so a single parser + a per-vendor URL table covers all of them. Anthropic and Amazon are the exceptions (HTML pages) and need their own handling.
+
+Background / secondary citations (blogs, landscape write-ups) are kept in `docs/design/external-references.md` (local only, gitignored).

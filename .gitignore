@@ -56,6 +56,7 @@ appsettings.*.json
 
 ## Local-only docs
 docs/publishing.md
+docs/design/external-references.md
 
 ## Claude Code
 .claude/settings.local.json

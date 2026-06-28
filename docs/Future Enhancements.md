@@ -6,29 +6,17 @@ Items listed here are planned but deferred from the initial implementation. Remo
 
 - **MySQL support** — via Pomelo.EntityFrameworkCore.MySql. Deferred until Pomelo ships a .NET 10-compatible package. PostgreSQL and SQL Server are available now.
 
+## Database & Scaling
+
+The server is the platform's heaviest and most *sustained* PostgreSQL consumer (continuous ingestion + Blazor analytics dashboard + the 2-min session materializer), all on a pool that shares the DB server's global `max_connections` budget with the other FactFoundry services. No connection leak today, but a few code-level items will matter as concurrent traffic grows:
+
+- **Use `AddDbContextFactory`, not `AddDbContext`, for the Blazor Server UI** — `Program.cs` registers `TelemetryForgeDbContext` as scoped (`AddDbContext`). In Blazor Server a scope is the *circuit* lifetime (the whole interactive session), so a single long-lived context is shared across concurrent component renders/event handlers, risking the `"A second operation was started on this context"` error and keeping the change-tracker (and connection-prone context) alive far longer than needed. Switch to `AddDbContextFactory<TelemetryForgeDbContext>` and create a short-lived context per operation. Tightens connection usage and is the recommended EF Core pattern for Blazor Server. (The sibling FactFoundry Portal already uses the factory.)
+- **Batch the per-session query in `SessionMaterializationService`** — `MaterializeSessions` fetches candidate `(SessionHash, SiteId)` keys, then issues **one query per candidate** in a `foreach` (N+1). For a backlog of N closed sessions that's N round-trips. Load all unmaterialized events for the candidate set in a single query (e.g. filter by the candidate keys, then group in memory) — or chunk it — so a materialization pass is a small fixed number of queries regardless of backlog size.
+- **Pool sizing / pooler readiness** — per-pool `Maximum Pool Size` is set in the deployment env vars and draws from the shared `max_connections` ceiling. As real visitor concurrency climbs, this server needs a standing allocation of that budget, and the platform-level plan is a connection pooler (PgBouncer / Npgsql multiplexing). Tracked in the fact-foundry-platform design doc *DD-0002: Database connection pooling and scaling*.
+
 ## SDK Compatibility (telemetry-forge-sdk)
 
-The SDK packages need updates to match the server's current ingestion API. The server moved from session-level payloads to per-request web events (ADR-003) and added heartbeat support for desktop/mobile.
-
-### Web Package — Per-Request Events
-
-The server now expects `WebEventPayload` (one event per request) instead of `WebSessionPayload` (one payload per session). The SDK's `TelemetryForgeMiddleware` and `TelemetryForgeCircuitHandler` need to be rewritten:
-
-- **Replace `WebSessionPayload` with `WebEventPayload`** — fields: `ip_address`, `ga_value`, `session_id`, `user_agent`, `referrer`, `language`, `page`, `status_code`, `event_type`, `event_name`, `event_data`, `target_url`, `country`, `region`, `sec_ch_ua`, `sec_ch_ua_mobile`, `sec_ch_ua_platform`, `timestamp`, `dnt`
-- **Middleware**: post one event per request (event_type=page_view) instead of accumulating a session. Send raw IP — server does the hashing. Read CloudFlare headers (CF-IPCountry, CF-Region) if available and include as `country`/`region`. Read Client Hints headers (Sec-CH-UA, Sec-CH-UA-Mobile, Sec-CH-UA-Platform) for accurate browser identification
-- **Circuit handler**: post a page_view event on each `TrackNavigation()` call instead of accumulating and flushing at circuit close. Optionally send a circuit_close event when the circuit ends (for last-page duration calculation)
-- **Custom event API**: add `ITelemetryForge.TrackEvent(string eventName, Dictionary<string, object>? eventData)` so developers can fire server-side custom events (event_type=custom)
-- **Link click tracking (Blazor only, opt-in)**: add JS interop to capture anchor clicks and send link_click events with target_url. Acceptable because Blazor already requires JS
-
-### Desktop Package — Heartbeat Support
-
-The server now supports session upsert via `session_id` + `sequence` fields, allowing periodic partial updates instead of a single end-of-session flush:
-
-- **Add `session_id` field** — client-generated UUID, stable for the app session lifetime
-- **Add `sequence` field** — monotonically increasing counter (0 for first heartbeat)
-- **Implement heartbeat timer** — periodically flush deltas (new features, new errors) on a configurable interval (e.g., every 15-30 minutes). Send only new feature_path entries and error_events since the last heartbeat, not the full accumulated list
-- **Keep end-of-session flush** — final flush on dispose with sequence=N and full duration
-- **Configuration**: add `HeartbeatIntervalMinutes` to `DesktopTelemetryOptions` (configurable, disabled by default for backward compatibility)
+The **Web** (per-request `WebEventPayload`, ADR-003) and **Desktop** (heartbeat via `session_id` + `sequence`) packages are now implemented and shipped — verified against the live server (e.g. KevinOfTech.com runs `FactFoundry.TelemetryForge.Web` 1.1.3). The only remaining SDK gap is the Mobile package; see **Mobile Package — Heartbeat Support** below.
 
 ## Security Page
 

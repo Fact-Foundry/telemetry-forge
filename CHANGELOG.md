@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Docs
+
+- ADR-005 (Proposed) — first-class API telemetry type: API gets its own ingestion endpoint (`POST /api/telemetry/api`), `ApiEventPayload`, `ApiEvent` entity, health-centric dashboard, and SDK entrypoint (following the Desktop/Mobile precedent), rather than being routed through the Web channel. Resolves the bot misclassification at the root (browser-only heuristics like `no-language` and UA bot-token simply don't apply to the API channel; ADR-004 Axis 2 behavioral detectors still do). Data model = auto-captured core (route template, method, status, latency, country, timestamp) + optional consumer-defined dimensions (machine fingerprint hash, app version, plan, platform, outcome). Adds an optional global/per-site trusted-submitter IP allowlist on `/api/telemetry/*` (transport-IP gated) and a migration-safe per-site config convention (namespaced `ServerSetting` keys with global fallback — no new columns). Supersedes the earlier web-channel-reuse draft
+- ADR-006 (Proposed) — soft delete over hard delete project-wide (deletion marker + query filter; never orphan related rows)
+- ADR-007 (Proposed) — active health-check / uptime monitoring: a background poller calls each enabled site's health URL on its interval, records the result (`HealthCheckResult`), and alerts via the ADR-004 sinks pipeline after N consecutive failures (plus a recovery notice). The active counterpart to passive ingestion — distinguishes *down* from *quiet*. Includes SSRF guardrails (block loopback/private/link-local/cloud-metadata, resolve-and-check IP, allowlist override) and a self-probe marker (`X-TelemetryForge-HealthCheck`) so an instrumented target's SDK skips TF's own probes. Per-site config via namespaced `ServerSetting` keys (ADR-005 convention)
+- Added "Database & Scaling" section to `docs/Future Enhancements.md` — DbContext factory for Blazor Server, batching the N+1 in `SessionMaterializationService`, and pool-sizing/pooler readiness (cross-ref platform DD-0002)
+- Removed implemented SDK-compatibility items from `docs/Future Enhancements.md` (Web per-request events and Desktop heartbeat are shipped and verified against the live server); only the Mobile package remains
+
 ## [1.1.6]
 
 ### Features
