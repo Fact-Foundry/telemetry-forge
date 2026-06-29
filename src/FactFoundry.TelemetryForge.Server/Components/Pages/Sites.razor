@@ -55,6 +55,7 @@ else
             <MudTh>Status</MudTh>
             <MudTh>Registered</MudTh>
             <MudTh>Last Payload</MudTh>
+            <MudTh>SDK Version</MudTh>
             <MudTh Style="width: 48px;"></MudTh>
         </HeaderContent>
         <RowTemplate>
@@ -72,6 +73,7 @@ else
             </MudTd>
             <MudTd>@context.RegisteredAt.ToString("yyyy-MM-dd")</MudTd>
             <MudTd>@(context.LastPayloadAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")</MudTd>
+            <MudTd>@(context.LastSdkVersion ?? "—")</MudTd>
             <MudTd>
                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" AnchorOrigin="Origin.BottomRight"
                          TransformOrigin="Origin.TopRight">

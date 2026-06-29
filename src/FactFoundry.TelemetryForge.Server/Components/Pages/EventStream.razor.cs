@@ -167,6 +167,33 @@ public partial class EventStream : ComponentBase
             }));
         }
 
+        if (_typeFilter is "" or "Api")
+        {
+            var apiQuery = Db.ApiEvents.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrEmpty(_siteFilter))
+                apiQuery = apiQuery.Where(e => e.SiteId == _siteFilter);
+            if (!string.IsNullOrEmpty(_pageFilter))
+                apiQuery = apiQuery.Where(e => e.RouteTemplate == _pageFilter);
+
+            var apiEvents = await apiQuery.OrderByDescending(e => e.IngestedAt).Take(100).ToListAsync();
+            var siteNames = _sites.ToDictionary(s => s.Id, s => s.Name);
+
+            events.AddRange(apiEvents.Select(e => new EventRow
+            {
+                Id = e.Id,
+                SiteName = siteNames.GetValueOrDefault(e.SiteId, e.SiteId),
+                SourceType = "Api",
+                ApiMethod = e.Method,
+                Page = e.RouteTemplate,
+                StatusCode = e.StatusCode,
+                DurationMs = e.LatencyMs,
+                Country = e.Country,
+                Outcome = e.Outcome,
+                IngestedAt = e.IngestedAt,
+                Timestamp = e.Timestamp.UtcDateTime,
+            }));
+        }
+
         _events = events.OrderByDescending(e => e.IngestedAt).Take(100).ToList();
     }
 
@@ -233,6 +260,21 @@ public partial class EventStream : ComponentBase
                     options.Add(feature);
         }
 
+        if (_typeFilter is "" or "Api")
+        {
+            var apiQuery = Db.ApiEvents.AsNoTracking().AsQueryable();
+            if (!string.IsNullOrEmpty(_siteFilter))
+                apiQuery = apiQuery.Where(e => e.SiteId == _siteFilter);
+
+            var routes = await apiQuery
+                .Where(e => e.RouteTemplate != null && e.RouteTemplate != "")
+                .Select(e => e.RouteTemplate)
+                .Distinct()
+                .ToListAsync();
+            foreach (var r in routes)
+                options.Add(r);
+        }
+
         _pageOptions = options.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
         if (!string.IsNullOrEmpty(_pageFilter) && !_pageOptions.Contains(_pageFilter))
             _pageFilter = string.Empty;
@@ -257,11 +299,21 @@ public partial class EventStream : ComponentBase
 
         foreach (var e in _events)
         {
-            var eventCol = e.SourceType == "Web" ? e.WebEventType ?? "" : "session";
-            var visitor = e.IsBot ? "Bot" : e.IsIgnored ? "Ignored" : e.IsFirstSeen ? "New" : "Returning";
-            var pageFeature = e.SourceType == "Web"
-                ? e.EventName ?? e.Page ?? ""
-                : $"{e.FeatureCount} features";
+            var eventCol = e.SourceType switch
+            {
+                "Web" => e.WebEventType ?? "",
+                "Api" => e.ApiMethod ?? "",
+                _ => "session"
+            };
+            var visitor = e.SourceType == "Api"
+                ? ""
+                : e.IsBot ? "Bot" : e.IsIgnored ? "Ignored" : e.IsFirstSeen ? "New" : "Returning";
+            var pageFeature = e.SourceType switch
+            {
+                "Web" => e.EventName ?? e.Page ?? "",
+                "Api" => e.Page ?? "",
+                _ => $"{e.FeatureCount} features"
+            };
             var session = e.SessionHash ?? "";
 
             sb.AppendLine(string.Join(",",
@@ -290,6 +342,7 @@ public partial class EventStream : ComponentBase
         "Web" => Color.Info,
         "Desktop" => Color.Success,
         "Mobile" => Color.Warning,
+        "Api" => Color.Primary,
         _ => Color.Default
     };
 
@@ -344,6 +397,10 @@ public partial class EventStream : ComponentBase
         public string? Browser { get; set; }
         public string? Os { get; set; }
         public string? DeviceType { get; set; }
+
+        // API event fields
+        public string? ApiMethod { get; set; }
+        public string? Outcome { get; set; }
 
         // Desktop/Mobile session fields
         public string? AppVersion { get; set; }

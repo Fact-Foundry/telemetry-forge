@@ -271,7 +271,8 @@ public class DatabaseEventPublisherTests
             LatencyMs = 42,
             Country = "United States",
             CountryCode = "US",
-            Timestamp = DateTimeOffset.UtcNow
+            Timestamp = DateTimeOffset.UtcNow,
+            Outcome = "license_valid"
         };
 
         await publisher.PublishAsync(apiEvent);
@@ -283,6 +284,7 @@ public class DatabaseEventPublisherTests
         Assert.Equal(200, stored.StatusCode);
         Assert.Equal(42, stored.LatencyMs);
         Assert.Equal("US", stored.CountryCode);
+        Assert.Equal("license_valid", stored.Outcome);
     }
 
     [Fact]

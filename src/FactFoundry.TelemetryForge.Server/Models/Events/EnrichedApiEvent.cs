@@ -60,4 +60,11 @@ public class EnrichedApiEvent
     /// </summary>
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }
+
+    /// <summary>
+    /// Consumer-defined business outcome for the request (e.g. "license_valid"), distinct from
+    /// the HTTP status code. Null when the caller supplied none.
+    /// </summary>
+    [JsonPropertyName("outcome")]
+    public string? Outcome { get; set; }
 }

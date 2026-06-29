@@ -39,6 +39,13 @@ public class Site
     /// When the last telemetry payload was received from this site.
     /// </summary>
     public DateTime? LastPayloadAt { get; set; }
+
+    /// <summary>
+    /// The SDK version last reported by this site, read from the
+    /// <c>X-TelemetryForge-Sdk-Version</c> request header. Null when the site posts without it
+    /// (e.g. a custom non-.NET client that omits the header).
+    /// </summary>
+    public string? LastSdkVersion { get; set; }
 }
 
 /// <summary>

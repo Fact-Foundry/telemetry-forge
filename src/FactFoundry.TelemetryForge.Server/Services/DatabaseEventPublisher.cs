@@ -168,6 +168,7 @@ public class DatabaseEventPublisher : IEventPublisher
         Country = e.Country,
         CountryCode = e.CountryCode,
         Timestamp = e.Timestamp,
+        Outcome = e.Outcome,
         IngestedAt = DateTime.UtcNow
     };
 

@@ -1,0 +1,134 @@
+@page "/api-health"
+
+<PageTitle>API Health — TelemetryForge</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">API Health</MudText>
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="2">
+    <MudSelect T="string" Value="_period" ValueChanged="OnPeriodChanged"
+               Variant="Variant.Outlined" Dense="true" Style="max-width:160px;" Immediate="true" Margin="Margin.Dense"
+               Label="Period">
+        <MudSelectItem T="string" Value="@("Today")">Today</MudSelectItem>
+        <MudSelectItem T="string" Value="@("Last 7 Days")">Last 7 Days</MudSelectItem>
+        <MudSelectItem T="string" Value="@("Last 30 Days")">Last 30 Days</MudSelectItem>
+    </MudSelect>
+    <MudSelect T="string" Value="_selectedSiteId" ValueChanged="OnSiteChanged"
+               Variant="Variant.Outlined" Dense="true" Style="max-width:250px;" Immediate="true" Margin="Margin.Dense"
+               Label="API">
+        <MudSelectItem T="string" Value="@("")">All APIs</MudSelectItem>
+        @foreach (var site in _sites)
+        {
+            <MudSelectItem T="string" Value="@site.Id">@site.Name</MudSelectItem>
+        }
+    </MudSelect>
+</MudStack>
+
+@if (_sites.Count == 0)
+{
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.body1" Color="Color.Default">
+            No API registered yet. Go to <MudLink Href="/sites">Sites &amp; Apps</MudLink> and register a site of type <strong>API</strong>.
+        </MudText>
+    </MudPaper>
+}
+else if (!_loaded)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" sm="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2" Color="Color.Default">Total Requests</MudText>
+                <MudText Typo="Typo.h4">@_totalRequests</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2" Color="Color.Default">Error Rate</MudText>
+                <MudText Typo="Typo.h4" Color="@(_errorRatePct > 0 ? Color.Error : Color.Success)">@_errorRatePct%</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2" Color="Color.Default">Avg Latency</MudText>
+                <MudText Typo="Typo.h4">@_avgLatencyMs ms</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2" Color="Color.Default">p95 Latency</MudText>
+                <MudText Typo="Typo.h4">@_p95LatencyMs ms</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Spacing="4" Class="mt-2">
+        @* Request volume over time (2/3) + status split donut (1/3) *@
+        <MudItem xs="12" md="8" Style="display:flex">
+            <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
+                <MudText Typo="Typo.h6" Class="mb-2">Request Volume</MudText>
+                @if (_volumeChart.Series.Count > 0)
+                {
+                    <LineChart Series="_volumeChart.Series" XAxisLabels="_volumeChart.Labels"
+                               Responsive="true" CrosshairTooltip="true" Width="1000" Height="320" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Default">No requests for this period.</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="4" Style="display:flex">
+            <MudPaper Class="pa-4" Elevation="1" Style="flex:1;">
+                <MudText Typo="Typo.h6" Class="mb-2">Status Split</MudText>
+                @if (_statusPie.Data.Count > 0)
+                {
+                    <DonutChart Data="_statusPie.Data" Responsive="true" Width="400" Height="360"
+                                CenterLabel="Requests" ShowLegendValues="true" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Default">No status data for this period.</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+
+        @* Top endpoints (full width) *@
+        <MudItem xs="12">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-2">Top Endpoints</MudText>
+                @if (_endpointRows.Count > 0)
+                {
+                    <MudTable Items="_endpointRows" Dense="true" Hover="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Method</MudTh>
+                            <MudTh>Route</MudTh>
+                            <MudTh Style="text-align:right">Requests</MudTh>
+                            <MudTh Style="text-align:right">Error Rate</MudTh>
+                            <MudTh Style="text-align:right">Avg Latency</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.Method</MudChip>
+                            </MudTd>
+                            <MudTd>@context.RouteTemplate</MudTd>
+                            <MudTd Style="text-align:right">@context.Count</MudTd>
+                            <MudTd Style="text-align:right">
+                                <MudText Color="@(context.ErrorRatePct > 0 ? Color.Error : Color.Default)" Typo="Typo.body2">
+                                    @context.ErrorRatePct%
+                                </MudText>
+                            </MudTd>
+                            <MudTd Style="text-align:right">@context.AvgLatencyMs ms</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Default">No endpoint data for this period.</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}

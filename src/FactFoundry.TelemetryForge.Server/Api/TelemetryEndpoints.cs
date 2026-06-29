@@ -342,9 +342,19 @@ public static class TelemetryEndpoints
             if (site is null)
                 return Results.Json(new { error = "Site not found." }, statusCode: 404);
 
-            // API telemetry carries no caller IP. The connection IP is the submitting app server;
-            // geolocate it server-side (populated only when a GeoIP database is configured) and discard it.
-            var geo = geoLocationService.LookupDatabase(GeoLocationService.GetClientIp(context));
+            // The API SDK supplies the caller's country as an ISO 3166-1 alpha-2 code, resolved
+            // from a CDN geolocation header (e.g. CF-IPCountry) on the original inbound request.
+            // The connection IP here is the submitting app server, not the caller, so fall back to
+            // IP geolocation only when the SDK provides no country (populated only when a GeoIP
+            // database is configured) and discard the IP.
+            string? countryCode = payload.Country;
+            string? countryName = GeoLocationService.CountryNameFromCode(countryCode);
+            if (string.IsNullOrWhiteSpace(countryCode))
+            {
+                var geo = geoLocationService.LookupDatabase(GeoLocationService.GetClientIp(context));
+                countryCode = geo.CountryCode;
+                countryName = geo.Country ?? GeoLocationService.CountryNameFromCode(geo.CountryCode);
+            }
 
             var enriched = new EnrichedApiEvent
             {
@@ -354,17 +364,24 @@ public static class TelemetryEndpoints
                 Method = payload.Method,
                 StatusCode = payload.StatusCode,
                 LatencyMs = payload.LatencyMs,
-                Country = geo.Country ?? GeoLocationService.CountryNameFromCode(geo.CountryCode),
-                CountryCode = geo.CountryCode,
-                Timestamp = payload.Timestamp
+                Country = countryName,
+                CountryCode = countryCode,
+                Timestamp = payload.Timestamp,
+                Outcome = payload.Outcome
             };
 
             await publisher.PublishAsync(enriched, context.RequestAborted);
+
+            // SDK version is transport metadata, stamped on the site rather than per-event.
+            // Optional: a custom non-.NET client may omit it.
+            var sdkVersion = context.Request.Headers["X-TelemetryForge-Sdk-Version"].FirstOrDefault();
 
             site = await db.Sites.FindAsync(siteId);
             if (site is not null)
             {
                 site.LastPayloadAt = DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(sdkVersion))
+                    site.LastSdkVersion = sdkVersion;
                 await db.SaveChangesAsync();
             }
 

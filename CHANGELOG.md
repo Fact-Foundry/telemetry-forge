@@ -5,7 +5,12 @@
 ### Features
 
 - API telemetry is now a first-class type — new `POST /api/telemetry/api` endpoint, `ApiEventPayload`, and `ApiEvent` storage capturing route template, method, status code, latency, country (server-side geo, IP discarded), and timestamp. Registration dropdown gains an **API** type. Resolves the bot misclassification that occurred when API traffic was routed through the Web channel (ADR-005, Phase 1)
+- API channel now honors an SDK-supplied `country` (ISO 3166-1 alpha-2 from a CDN header on the original request), mirroring the Web channel. The connection IP on `/api/telemetry/api` is the submitting app server, not the caller, so IP geolocation could never identify the real caller's country; the server now prefers `payload.Country` and falls back to IP geo only when absent
+- API channel records the reporting SDK version — `/api/telemetry/api` reads an optional `X-TelemetryForge-Sdk-Version` request header and stamps it on the site (`Site.LastSdkVersion`), surfaced in a new **SDK Version** column on the Sites & Apps page. Transport metadata, so it's stored once per site rather than per event; custom non-.NET clients may omit the header
+- API channel captures a consumer-defined business `outcome` per request (e.g. `license_valid`), distinct from the HTTP status code. Stored on `ApiEvent.Outcome` and surfaced in the Event Stream API detail panel. Plain JSON field, so any client (PHP, Python, etc.) can set it (migration `AddApiOutcomeAndSiteSdkVersion`)
+- API Health dashboard (`/api-health`) — health-centric view for API-type sites: total requests, error rate, avg/p95 latency, request-volume line chart split by status class, status-split donut, and a top-endpoints table (requests, error rate, avg latency), filterable by period and API (ADR-005, Phase 1)
 - Database schema is now managed by EF Core migrations applied automatically at startup (`Database.Migrate()`) for PostgreSQL; the in-memory provider still uses `EnsureCreated`. Existing databases originally built by `EnsureCreated` are baselined on first run (initial migration recorded as applied, no DDL run against existing tables), so self-hosters upgrade by deploying — no manual SQL (ADR-008)
+- Event Stream now includes API events — new **API** type filter, route-template page filter, method/route/status/latency/country columns, and an API-specific expandable detail panel; site name resolved from the registered API
 
 ### Docs
 

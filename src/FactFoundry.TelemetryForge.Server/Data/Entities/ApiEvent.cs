@@ -54,4 +54,10 @@ public class ApiEvent
     /// When this record was ingested by the server.
     /// </summary>
     public DateTime IngestedAt { get; set; }
+
+    /// <summary>
+    /// Consumer-defined business outcome for the request (e.g. "license_valid"), distinct from
+    /// the HTTP status code. Null when the caller supplied none.
+    /// </summary>
+    public string? Outcome { get; set; }
 }

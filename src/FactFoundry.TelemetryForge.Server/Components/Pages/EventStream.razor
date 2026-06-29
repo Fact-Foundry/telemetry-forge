@@ -25,6 +25,7 @@
         <MudSelectItem T="string" Value="@("Web")">Web</MudSelectItem>
         <MudSelectItem T="string" Value="@("Desktop")">Desktop</MudSelectItem>
         <MudSelectItem T="string" Value="@("Mobile")">Mobile</MudSelectItem>
+        <MudSelectItem T="string" Value="@("Api")">API</MudSelectItem>
     </MudSelect>
     <MudSelect T="string" Value="_pageFilter" ValueChanged="OnPageChanged" Label="Page/Feature"
                Variant="Variant.Outlined" Dense="true" Style="max-width: 300px;" Immediate="true" Margin="Margin.Dense">
@@ -90,6 +91,11 @@ else
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
                              Color="@GetWebEventColor(context.WebEventType)">@context.WebEventType</MudChip>
                 }
+                else if (context.SourceType == "Api")
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                             Color="Color.Primary">@context.ApiMethod</MudChip>
+                }
                 else
                 {
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
@@ -97,7 +103,11 @@ else
                 }
             </MudTd>
             <MudTd>
-                @if (context.IsBot)
+                @if (context.SourceType == "Api")
+                {
+                    <span>—</span>
+                }
+                else if (context.IsBot)
                 {
                     <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Error">Bot</MudChip>
                 }
@@ -118,6 +128,10 @@ else
                 @if (context.SourceType == "Web")
                 {
                     @(context.EventName ?? context.Page ?? "—")
+                }
+                else if (context.SourceType == "Api")
+                {
+                    @(context.Page ?? "—")
                 }
                 else
                 {
@@ -189,6 +203,37 @@ else
                                             <MudText Typo="Typo.body2">@context.EventName</MudText>
                                         </MudItem>
                                     }
+                                }
+                                else if (context.SourceType == "Api")
+                                {
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Method</MudText>
+                                        <MudText Typo="Typo.body2">@(context.ApiMethod ?? "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Route</MudText>
+                                        <MudText Typo="Typo.body2" Style="font-family:monospace;font-size:0.8rem;">@(context.Page ?? "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Status Code</MudText>
+                                        <MudText Typo="Typo.body2">@(context.StatusCode > 0 ? context.StatusCode.ToString() : "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Latency</MudText>
+                                        <MudText Typo="Typo.body2">@FormatDuration(context.DurationMs)</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Country</MudText>
+                                        <MudText Typo="Typo.body2">@(context.Country ?? "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Outcome</MudText>
+                                        <MudText Typo="Typo.body2">@(context.Outcome ?? "—")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6" md="4">
+                                        <MudText Typo="Typo.caption">Time</MudText>
+                                        <MudText Typo="Typo.body2">@FormatTime(context.Timestamp)</MudText>
+                                    </MudItem>
                                 }
                                 else
                                 {
